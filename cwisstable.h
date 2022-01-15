@@ -26,47 +26,42 @@
 #include <string.h>
 
 #ifdef __cplusplus
-#include <atomic>
+  #include <atomic>
+  #define CWISS_BEGIN_EXTERN_ extern "C" {
+  #define CWISS_END_EXTERN_ }
 #else
-#include <stdatomic.h>
-#endif
-
-#ifdef __cplusplus
-#define CWISS_BEGIN_EXTERN_ extern "C" {
-#define CWISS_END_EXTERN_ }
-#else
-#define CWISS_BEGIN_EXTERN_
-#define CWISS_END_EXTERN_
+  #include <stdatomic.h>
+  #define CWISS_BEGIN_EXTERN_
+  #define CWISS_END_EXTERN_
 #endif
 
 #ifndef CWISS_HAVE_SSE2
-#if defined(__SSE2__) ||  \
-    (defined(_MSC_VER) && \
-     (defined(_M_X64) || (defined(_M_IX86) && _M_IX86_FP >= 2)))
-#define CWISS_HAVE_SSE2 1
-#else
-#define CWISS_HAVE_SSE2 0
-#endif
+  #if defined(__SSE2__) ||  \
+      (defined(_MSC_VER) && \
+       (defined(_M_X64) || (defined(_M_IX86) && _M_IX86_FP >= 2)))
+    #define CWISS_HAVE_SSE2 1
+  #else
+    #define CWISS_HAVE_SSE2 0
+  #endif
 #endif
 
 #ifndef CWISS_HAVE_SSSE3
-#ifdef __SSSE3__
-#define CWISS_HAVE_SSSE3 1
-#else
-#define CWISS_HAVE_SSSE3 0
-#endif
-#endif
-
-#if CWISS_HAVE_SSSE3 && !CWISS_HAVE_SSE2
-#error "Bad configuration!"
+  #ifdef __SSSE3__
+    #define CWISS_HAVE_SSSE3 1
+  #else
+    #define CWISS_HAVE_SSSE3 0
+  #endif
 #endif
 
 #if CWISS_HAVE_SSE2
-#include <emmintrin.h>
+  #include <emmintrin.h>
 #endif
 
 #if CWISS_HAVE_SSSE3
-#include <tmmintrin.h>
+  #if !CWISS_HAVE_SSE2
+    #error "Bad configuration: SSSE3 implies SSE2!"
+  #endif
+  #include <tmmintrin.h>
 #endif
 
 #define CWISS_CHECK(c, ...)                                               \
@@ -80,11 +75,11 @@
   } while (false)
 
 #ifdef NDEBUG
-#define CWISS_DCHECK(c, ...) \
-  do {                       \
-  } while (false)
+  #define CWISS_DCHECK(c, ...) \
+    do {                       \
+    } while (false)
 #else
-#define CWISS_DCHECK CWISS_CHECK
+  #define CWISS_DCHECK CWISS_CHECK
 #endif
 
 // GCC-style __builtins are per-type; using ctz produces too small of a value
@@ -226,19 +221,19 @@ static inline bool CWISS_IsEmptyOrDeleted(CWISS_ctrl_t c) {
 // Work around this by using the portable implementation of Group
 // when using -funsigned-char under GCC.
 static inline __m128i CWISS_mm_cmpgt_epi8_fixed(__m128i a, __m128i b) {
-#if defined(__GNUC__) && !defined(__clang__)
+  #if defined(__GNUC__) && !defined(__clang__)
   if (CHAR_MIN == 0) {  // std::is_unsigned_v<char>
     const __m128i mask = _mm_set1_epi8(0x80);
     const __m128i diff = _mm_subs_epi8(b, a);
     return _mm_cmpeq_epi8(_mm_and_si128(diff, mask), mask);
   }
-#endif
+  #endif
   return _mm_cmpgt_epi8(a, b);
 }
 
 typedef __m128i CWISS_Group;
-#define CWISS_Group_kWidth ((size_t)16)
-#define CWISS_Group_kShift 0
+  #define CWISS_Group_kWidth ((size_t)16)
+  #define CWISS_Group_kShift 0
 
 CWISS_Group CWISS_Group_new(const CWISS_ctrl_t* pos) {
   return _mm_loadu_si128((const __m128i*)pos);
@@ -253,12 +248,12 @@ static inline CWISS_BitMask CWISS_Group_Match(const CWISS_Group* self,
 
 // Returns a bitmask representing the positions of empty slots.
 static inline CWISS_BitMask CWISS_Group_MatchEmpty(const CWISS_Group* self) {
-#if CWISS_HAVE_SSSE3
+  #if CWISS_HAVE_SSSE3
   // This only works because ctrl_t::kEmpty is -128.
   return CWISS_Group_BitMask(_mm_movemask_epi8(_mm_sign_epi8(*self, *self))
-#else
+  #else
   return CWISS_Group_Match(self, CWISS_kEmpty);
-#endif
+  #endif
 }
 
 // Returns a bitmask representing the positions of empty or deleted slots.
@@ -281,19 +276,19 @@ static inline void CWISS_Group_ConvertSpecialToEmptyAndFullToDeleted(
     const CWISS_Group* self, CWISS_ctrl_t* dst) {
   __m128i msbs = _mm_set1_epi8((char)-128);
   __m128i x126 = _mm_set1_epi8(126);
-#if CWISS_HAVE_SSSE3
+  #if CWISS_HAVE_SSSE3
   __m128i res = _mm_or_si128(_mm_shuffle_epi8(x126, *self), msbs);
-#else
+  #else
   __m128i zero = _mm_setzero_si128();
   __m128i special_mask = CWISS_mm_cmpgt_epi8_fixed(zero, *self);
   __m128i res = _mm_or_si128(msbs, _mm_andnot_si128(special_mask, x126));
-#endif
+  #endif
   _mm_storeu_si128((__m128i*)dst, res);
 }
 #else  // CWISS_HAVE_SSE2
 typedef uint64_t CWISS_Group;
-#define CWISS_Group_kWidth ((size_t)8)
-#define CWISS_Group_kShift 3
+  #define CWISS_Group_kWidth ((size_t)8)
+  #define CWISS_Group_kShift 3
 
 // NOTE: Endian-hostile.
 CWISS_Group CWISS_Group_new(const CWISS_ctrl_t* pos) {
@@ -1485,7 +1480,7 @@ CWISS_END_EXTERN_
   static inline HashSet_##_Insert HashSet_##_insert(HashSet_* self,            \
                                                     Type_* val) {              \
     CWISS_Insert ret = CWISS_RawHashSet_insert(&kPolicy_, &self->set_, val);   \
-    return (HashSet_##_Insert){{ret.iter}, ret.inserted};                        \
+    return (HashSet_##_Insert){{ret.iter}, ret.inserted};                      \
   }                                                                            \
                                                                                \
   static inline HashSet_##_CIter HashSet_##_cfind_hinted(                      \

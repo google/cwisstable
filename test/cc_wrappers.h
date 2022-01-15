@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 // C++ wrappers with an absl::raw_hash_set API for binding to the tests.
 
 #ifndef CWISSTABLE_TEST_CC_WRAPPERS_H_
