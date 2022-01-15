@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO(#3): Document everything!
+
 #ifndef CWISSTABLE_H_
 #define CWISSTABLE_H_
 
@@ -241,6 +243,7 @@ static inline bool CWISS_IsEmptyOrDeleted(CWISS_ctrl_t c) {
 #define CWISS_Group_BitMask(x) \
   (CWISS_BitMask){(uint64_t)(x), CWISS_Group_kWidth, CWISS_Group_kShift};
 
+// TODO(#4): Port this to NEON.
 #if CWISS_HAVE_SSE2
 // https://github.com/abseil/abseil-cpp/issues/209
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87853
@@ -719,6 +722,9 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
   *state = state_;
 }
 
+// TODO(#5): Provide better macros for generating policies for complex types
+// like heap-allocated character buffers (e.g. C-style strings).
+
 #define CWISS_DECLARE_FLAT_POLICY(kPolicy_, Type_, hash_, eq_)           \
   static inline void kPolicy_##_copy_value(void* dst, const void* src) { \
     memcpy(dst, src, sizeof(Type_));                                     \
@@ -1063,6 +1069,7 @@ static inline void CWISS_RawHashSet_resize(const CWISS_Policy* policy,
     }
   }
   if (old_capacity) {
+    // TODO(#6): Implement MSAN support.
     // SanitizerUnpoisonMemoryRegion(old_slots,
     //                               sizeof(slot_type) * old_capacity);
     policy->free(old_ctrl,
@@ -1314,6 +1321,7 @@ static inline CWISS_PrepareInsert CWISS_RawHashSet_find_or_prepare_insert(
 // k is the key decomposed from `forward<Args>(args)...`, and the bool
 // returned by find_or_prepare_insert(k) was true.
 // POSTCONDITION: *m.iterator_at(i) == value_type(forward<Args>(args)...).
+// TODO(#7): Provide constructor-style initialization.
 static inline void* CWISS_RawHashSet_insert_at(const CWISS_Policy* policy,
                                                CWISS_RawHashSet* self, size_t i,
                                                const void* v) {
