@@ -42,7 +42,7 @@ struct BindingWrapper {
   auto symbol(Ts... args) {         \
     return CWISS_##symbol(args...); \
   } /* Force a semicolon: */        \
-  enum : int {}
+  enum symbol##_ForceSemi_ : int {}
 
 // Binds a constant (macro or otherwise) from cwisstable.
 #define CWISS_BIND_CONST(symbol) \
@@ -54,7 +54,7 @@ struct BindingWrapper {
   type(Ts... args) {                      \
     inner_ = CWISS_##type##_new(args...); \
   } /* Force a semicolon: */              \
-  enum : int {}
+  enum symbol##_ForceSemi_ : int {}
 
 // Binds a "member" function; see CWISS_BIND_STRUCT
 #define CWISS_BIND_MEMBER(type, symbol)                     \
@@ -62,7 +62,7 @@ struct BindingWrapper {
   auto symbol(Ts... args) {                                 \
     return CWISS_##type##_##symbol(&this->inner_, args...); \
   } /* Force a semicolon: */                                \
-  enum : int {}
+  enum symbol##_ForceSemi_ : int {}
 
 // Like `CWISS_BIND_MEMBER` but wraps the return value in an aggregate.
 #define CWISS_BIND_MEMBER_AS(type, symbol, as)                  \
@@ -70,7 +70,7 @@ struct BindingWrapper {
   auto symbol(Ts... args) {                                     \
     return as{CWISS_##type##_##symbol(&this->inner_, args...)}; \
   } /* Force a semicolon: */                                    \
-  enum : int {}
+  enum symbol##_ForceSemi_ : int {}
 
 // Like `CWISS_BIND_MEMBER` but calls a functor on the result.
 #define CWISS_BIND_MEMBER_WITH(type, symbol, with)                  \
@@ -78,7 +78,7 @@ struct BindingWrapper {
   auto symbol(Ts... args) {                                         \
     return (with)(CWISS_##type##_##symbol(&this->inner_, args...)); \
   } /* Force a semicolon: */                                        \
-  enum : int {}
+  enum symbol##_ForceSemi_ : int {}
 
 // Binds a "member" constant.
 #define CWISS_BIND_MEMBER_CONST(type, symbol) \
@@ -203,8 +203,7 @@ struct UnprefixTable {
           },
       .free =
           +[](void* ptr, size_t size, size_t align) {
-            return ::operator delete(ptr, size,
-                                     static_cast<std::align_val_t>(align));
+            return ::operator delete(ptr);
           },
       .destroy = +[](void* x, size_t) { static_cast<V*>(x)->~V(); },
       .copy = +[](void* dst, const void* src,
@@ -256,6 +255,7 @@ struct UnprefixTable {
   bool empty() const { return Inner_empty(i()); }
 
   void reserve(size_t n) { return Inner_reserve(i(), n); }
+  void rehash(size_t n) { return Inner_rehash(i(), n); }
   void clear() { return Inner_clear(i()); }
 
   iter find(const V& v) { return {Inner_find(i(), &v)}; }
