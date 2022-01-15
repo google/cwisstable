@@ -16,13 +16,14 @@
 
 #include "cwisstable.h"
 
-CWISS_DECLARE_FLAT_HASHSET(MyIntSet, int);
+CWISS_DECLARE_NODE_HASHSET(MyIntSet, int);
 
 int main(void) {
   MyIntSet set = MyIntSet_new(8);
 
   for (int i = 0; i < 8; ++i) {
     int val = i * i + 1;
+    MyIntSet_dump(&set);
     MyIntSet_insert(&set, &val);
   }
   MyIntSet_dump(&set);
@@ -31,10 +32,20 @@ int main(void) {
   int k = 4;
   assert(!MyIntSet_contains(&set, &k));
   k = 5;
-  assert(MyIntSet_contains(&set, &k));
+  MyIntSet_Iter it = MyIntSet_find(&set, &k);
+  int* v = MyIntSet_Iter_get(&it);
+  assert(v);
+  printf("5: %p\n", v);
+
+  MyIntSet_rehash(&set, 16);
+
+  it = MyIntSet_find(&set, &k);
+  v = MyIntSet_Iter_get(&it);
+  assert(v);
+  printf("5: %p\n", v);
 
   printf("entries:\n");
-  MyIntSet_Iter it = MyIntSet_iter(&set);
+  it = MyIntSet_iter(&set);
   for (int* p = MyIntSet_Iter_get(&it); p != NULL;
        p = MyIntSet_Iter_next(&it)) {
     printf("%d\n", *p);

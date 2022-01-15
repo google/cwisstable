@@ -228,7 +228,7 @@ struct UnprefixTable {
 
   // Amazingly, you can stick this in class scope and it somehow
   // works. Science!
-  CWISS_DECLARE_FLAT_HASHSET_WITH(Inner, V, kPolicy);
+  CWISS_DECLARE_HASHSET_WITH(Inner, V, kPolicy);
 
   struct iter {
     V& operator*() const { return *operator->(); }

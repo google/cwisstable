@@ -633,17 +633,18 @@ static inline size_t CWISS_AllocSize(size_t capacity, size_t slot_size,
                                      size_t slot_align) {
   return CWISS_SlotOffset(capacity, slot_align) + capacity * slot_size;
 }
+
+static inline void* CWISS_malloc(size_t size, size_t align) {
+  void* p = malloc(size);  // TODO: Check alignment.
+  CWISS_CHECK(p != NULL, "malloc() returned null");
+  return p;
+}
+static inline void CWISS_free(void* array, size_t size, size_t align) {
+  free(array);
+}
 /// Allocation formulae ////////////////////////////////////////////////////////
 
 /// Policies ///////////////////////////////////////////////////////////////////
-
-typedef void* (*CWISS_Alloc)(size_t size, size_t align);
-typedef void (*CWISS_Free)(void* p, size_t size, size_t align);
-typedef void (*CWISS_Destroy)(void* p, size_t len);
-typedef void (*CWISS_NewSlot)(void* p, size_t len);
-
-typedef void (*CWISS_Copy)(void* dest, const void* src, size_t len);
-
 // A hash table policy.
 //
 // Policies define how elements are manipulated inside of a hash table, allowing
@@ -692,7 +693,7 @@ typedef struct {
   // Extracts an element out of `slot`, returning a pointer to it.
   //
   // This function does not need to tolerate nulls.
-  void* (*element)(void* slot);
+  void* (*get)(void* slot);
 } CWISS_Policy;
 
 typedef size_t CWISS_FxHash_State;
@@ -719,15 +720,6 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
 }
 
 #define CWISS_DECLARE_FLAT_POLICY(kPolicy_, Type_, hash_, eq_)          \
-  static inline void* kPolicy_##_alloc(size_t size, size_t align) {     \
-    void* p = malloc(size); /* TODO: Check alignment. */                \
-    CWISS_CHECK(p != NULL, "malloc() returned null");                   \
-    return p;                                                           \
-  }                                                                     \
-  static inline void kPolicy_##_dealloc(void* array, size_t size,       \
-                                        size_t align) {                 \
-    free(array);                                                        \
-  }                                                                     \
   static inline void kPolicy_##copy_value(void* dst, const void* src) { \
     memcpy(dst, src, sizeof(Type_));                                    \
   }                                                                     \
@@ -741,8 +733,8 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
       alignof(Type_),                                                   \
       hash_,                                                            \
       eq_,                                                              \
-      kPolicy_##_alloc,                                                 \
-      kPolicy_##_dealloc,                                               \
+      CWISS_malloc,                                                     \
+      CWISS_free,                                                       \
       kPolicy_##copy_value,                                             \
       kPolicy_##new_slot,                                               \
       NULL,                                                             \
@@ -760,6 +752,47 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
     return memcmp(a, b, sizeof(Type_)) == 0;                       \
   }                                                                \
   CWISS_DECLARE_FLAT_POLICY(kPolicy_, Type_, kPolicy_##_hash, kPolicy_##_eq)
+
+#define CWISS_DECLARE_NODE_POLICY(kPolicy_, Type_, hash_, eq_)                \
+  static inline void kPolicy_##copy_value(void* dst, const void* src) {       \
+    memcpy(dst, src, sizeof(Type_));                                          \
+  }                                                                           \
+  static inline void kPolicy_##new_slot(void* slot) {                         \
+    void* node = CWISS_malloc(sizeof(Type_), alignof(Type_));                 \
+    memcpy(slot, &node, sizeof(node));                                        \
+  }                                                                           \
+  static inline void kPolicy_##del_slot(void* slot) {                         \
+    CWISS_free(*(void**)slot, sizeof(Type_), alignof(Type_));                 \
+  }                                                                           \
+  static inline void kPolicy_##txfer_slot(void* dst, void* src) {             \
+    memcpy(dst, src, sizeof(void*));                                          \
+  }                                                                           \
+  static inline void* kPolicy_##element(void* slot) { return *(void**)slot; } \
+  static const CWISS_Policy kPolicy_ = ((CWISS_Policy){                       \
+      sizeof(Type_*),                                                         \
+      alignof(Type_*),                                                        \
+      hash_,                                                                  \
+      eq_,                                                                    \
+      CWISS_malloc,                                                           \
+      CWISS_free,                                                             \
+      kPolicy_##copy_value,                                                   \
+      kPolicy_##new_slot,                                                     \
+      NULL,                                                                   \
+      kPolicy_##txfer_slot,                                                   \
+      kPolicy_##element,                                                      \
+  })
+
+#define CWISS_DECLARE_POD_NODE_POLICY(kPolicy_, Type_)             \
+  static inline size_t kPolicy_##_hash(const void* val) {          \
+    CWISS_FxHash_State state = 0;                                  \
+    CWISS_FxHash_Write(&state, val, sizeof(Type_));                \
+    return state;                                                  \
+  }                                                                \
+  static inline bool kPolicy_##_eq(const void* a, const void* b) { \
+    return memcmp(a, b, sizeof(Type_)) == 0;                       \
+  }                                                                \
+  CWISS_DECLARE_NODE_POLICY(kPolicy_, Type_, kPolicy_##_hash, kPolicy_##_eq)
+
 /// Policies ///////////////////////////////////////////////////////////////////
 
 /// RawHashSet /////////////////////////////////////////////////////////////////
@@ -862,7 +895,7 @@ static inline void* CWISS_RawIter_get(const CWISS_Policy* policy,
     return NULL;
   }
 
-  return policy->element(self->slot_);
+  return policy->get(self->slot_);
 }
 
 static inline void* CWISS_RawIter_next(const CWISS_Policy* policy,
@@ -872,7 +905,7 @@ static inline void* CWISS_RawIter_next(const CWISS_Policy* policy,
   self->slot_ += policy->size;
 
   CWISS_RawIter_skip_empty_or_deleted(policy, self);
-  return self->slot_;
+  return CWISS_RawIter_get(policy, self);
 }
 
 // "erases" the object from the container, except that it doesn't actually
@@ -980,7 +1013,7 @@ static inline void CWISS_RawHashSet_resize(const CWISS_Policy* policy,
   size_t total_probe_length = 0;
   for (size_t i = 0; i != old_capacity; ++i) {
     if (CWISS_IsFull(old_ctrl[i])) {
-      size_t hash = policy->hash(old_slots + i * policy->size);
+      size_t hash = policy->hash(policy->get(old_slots + i * policy->size));
       CWISS_FindInfo target =
           CWISS_find_first_non_full(self->ctrl_, hash, self->capacity_);
       size_t new_i = target.offset;
@@ -1034,7 +1067,7 @@ CWISS_NOINLINE static void CWISS_RawHashSet_drop_deletes_without_resize(
     if (!CWISS_IsDeleted(self->ctrl_[i])) continue;
 
     char* old_slot = self->slots_ + i * policy->size;
-    size_t hash = policy->hash(old_slot);
+    size_t hash = policy->hash(policy->get(old_slot));
 
     const CWISS_FindInfo target =
         CWISS_find_first_non_full(self->ctrl_, hash, self->capacity_);
@@ -1153,7 +1186,7 @@ static inline bool CWISS_RawHashSet_has_element(const CWISS_Policy* policy,
     while (CWISS_BitMask_next(&match, &i)) {
       char* slot =
           self->slots_ + CWISS_probe_seq_offset(&seq, i) * policy->size;
-      if (CWISS_LIKELY(policy->eq(slot, elem))) return true;
+      if (CWISS_LIKELY(policy->eq(policy->get(slot), elem))) return true;
     }
     if (CWISS_LIKELY(CWISS_Group_MatchEmpty(&g).mask)) return false;
     CWISS_probe_seq_next(&seq);
@@ -1224,7 +1257,7 @@ static inline CWISS_PrepareInsert CWISS_RawHashSet_find_or_prepare_insert(
     while (CWISS_BitMask_next(&match, &i)) {
       size_t idx = CWISS_probe_seq_offset(&seq, i);
       char* slot = self->slots_ + idx * policy->size;
-      if (CWISS_LIKELY(policy->eq(slot, key)))
+      if (CWISS_LIKELY(policy->eq(policy->get(slot), key)))
         return (CWISS_PrepareInsert){idx, false};
     }
     if (CWISS_LIKELY(CWISS_Group_MatchEmpty(&g).mask)) break;
@@ -1248,7 +1281,7 @@ static inline void* CWISS_RawHashSet_insert_at(const CWISS_Policy* policy,
                                                const void* v) {
   void* dst = self->slots_ + i * policy->size;
   policy->new_slot(dst);
-  void* val = policy->element(dst);
+  void* val = policy->get(dst);
   policy->copy_value(val, v);
 
   /* TODO
@@ -1386,7 +1419,7 @@ static inline CWISS_RawIter CWISS_RawHashSet_find_hinted(
     while (CWISS_BitMask_next(&match, &i)) {
       char* slot =
           self->slots_ + CWISS_probe_seq_offset(&seq, i) * policy->size;
-      if (CWISS_LIKELY(policy->eq(slot, key)))
+      if (CWISS_LIKELY(policy->eq(policy->get(slot), key)))
         return CWISS_RawHashSet_citer_at(policy, self,
                                          CWISS_probe_seq_offset(&seq, i));
     }
@@ -1455,11 +1488,15 @@ static inline bool CWISS_RawHashSet_contains(const CWISS_Policy* policy,
 CWISS_END_
 CWISS_END_EXTERN_
 
-#define CWISS_DECLARE_FLAT_HASHSET(HashSet_, Type_)          \
-  CWISS_DECLARE_POD_FLAT_POLICY(HashSet_##_kPolicy_, Type_); \
-  CWISS_DECLARE_FLAT_HASHSET_WITH(HashSet_, Type_, HashSet_##_kPolicy_)
+#define CWISS_DECLARE_FLAT_HASHSET(HashSet_, Type_)         \
+  CWISS_DECLARE_POD_FLAT_POLICY(HashSet_##_kPolicy, Type_); \
+  CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, HashSet_##_kPolicy)
 
-#define CWISS_DECLARE_FLAT_HASHSET_WITH(HashSet_, Type_, kPolicy_)             \
+#define CWISS_DECLARE_NODE_HASHSET(HashSet_, Type_)         \
+  CWISS_DECLARE_POD_NODE_POLICY(HashSet_##_kPolicy, Type_); \
+  CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, HashSet_##_kPolicy)
+
+#define CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, kPolicy_)                  \
   CWISS_BEGIN_                                                                 \
   static inline const CWISS_Policy* HashSet_##_policy() { return &kPolicy_; }  \
                                                                                \
