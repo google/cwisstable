@@ -40,7 +40,7 @@ size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
                                   const CWISS_RawHashSet* set,
                                   const void* key) {
   size_t num_probes = 0;
-  size_t hash = policy->hash(key, policy->size);
+  size_t hash = policy->hash(key);
   auto seq = CWISS_probe(set->ctrl_, hash, set->capacity_);
   while (true) {
     auto g = CWISS_Group_new(set->ctrl_ + seq.offset_);
@@ -49,7 +49,7 @@ size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
     while (CWISS_BitMask_next(&match, &i)) {
       size_t idx = CWISS_probe_seq_offset(&seq, i);
       char* slot = set->slots_ + idx * policy->size;
-      if (CWISS_LIKELY(policy->eq(slot, key, policy->size))) return num_probes;
+      if (CWISS_LIKELY(policy->eq(slot, key))) return num_probes;
 
       ++num_probes;
     }

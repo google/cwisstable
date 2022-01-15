@@ -26,7 +26,7 @@ cc_library(
     visibility = ["//:__subpackages__"],
 )
 
-cc_test(
+cc_binary(
     name = "example",
     srcs = ["example.c"],
     deps = [":cwisstable"],
