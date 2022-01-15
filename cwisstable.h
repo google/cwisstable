@@ -25,16 +25,26 @@
 #include <stdlib.h>
 #include <string.h>
 
+/// C++11 compatibility macros /////////////////////////////////////////////////
 #ifdef __cplusplus
   #include <atomic>
+  #define CWISS_ATOMIC_T(T_) std::atomic<T_>
+  #define CWISS_ATOMIC_INC(val_) (val_).fetch_add(1, std::memory_order_relaxed)
+
   #define CWISS_BEGIN_EXTERN_ extern "C" {
   #define CWISS_END_EXTERN_ }
 #else
   #include <stdatomic.h>
+  #define CWISS_ATOMIC_T(T_) _Atomic T_
+  #define CWISS_ATOMIC_INC(val_) \
+    atomic_fetch_add_explicit(&(val_), 1, memory_order_relaxed)
+
   #define CWISS_BEGIN_EXTERN_
   #define CWISS_END_EXTERN_
 #endif
+/// C++11 compatibility macros /////////////////////////////////////////////////
 
+/// x86 SIMD compatibility detection ///////////////////////////////////////////
 #ifndef CWISS_HAVE_SSE2
   #if defined(__SSE2__) ||  \
       (defined(_MSC_VER) && \
@@ -63,7 +73,9 @@
   #endif
   #include <tmmintrin.h>
 #endif
+/// x86 SIMD compatibility detection ///////////////////////////////////////////
 
+/// Utility macros /////////////////////////////////////////////////////////////
 #define CWISS_CHECK(c, ...)                                               \
   do {                                                                    \
     if (c) break;                                                         \
@@ -85,6 +97,8 @@
 // GCC-style __builtins are per-type; using ctz produces too small of a value
 // on wider types, for example. This solution is polyglot, allowing it to be
 // tested in C++ (vs, for example, _Generic hacks).
+//
+// TODO: MSCV support.
 #define CWISS_TrailingZeros(x) (__builtin_ctzll((unsigned long long)(x)))
 #define CWISS_LeadingZeros(x)                 \
   (__builtin_clzll((unsigned long long)(x)) - \
@@ -92,21 +106,29 @@
 
 #define CWISS_BitWidth(x) (((uint32_t)(sizeof(x) * 8)) - CWISS_LeadingZeros(x))
 
+// Branch hot/cold annotations.
+//
+// TODO: Implement with appropriate intrinsics.
 #define CWISS_LIKELY(cond) cond
 #define CWISS_UNLIKELY(cond) cond
 
 #define CWISS_NOINLINE __attribute__((noinline))
 
+// Miscellaneous setup before entering CWISS symbol definitions. GCC likes to
+// complain when you define statics and then don't use them, not realizing this
+// is a header.
+//
 // TODO: non-GCC/Clang support?
 #define CWISS_BEGIN_             \
   _Pragma("GCC diagnostic push") \
       _Pragma("GCC diagnostic ignored \"-Wunused-function\"")
-
 #define CWISS_END_ _Pragma("GCC diagnostic pop")
+/// Utility macros /////////////////////////////////////////////////////////////
 
 CWISS_BEGIN_
 CWISS_BEGIN_EXTERN_
 
+/// CWISS_BitMask //////////////////////////////////////////////////////////////
 typedef struct {
   uint64_t mask;
   uint32_t width, shift;
@@ -131,6 +153,7 @@ static inline uint32_t CWISS_BitMask_LeadingZeros(const CWISS_BitMask* self) {
          self->shift;
 }
 
+// TODO: carefully document what this function is supposed to be doing.
 static inline bool CWISS_BitMask_next(CWISS_BitMask* self, uint32_t* bit) {
   if (self->mask == 0) {
     return false;
@@ -140,9 +163,9 @@ static inline bool CWISS_BitMask_next(CWISS_BitMask* self, uint32_t* bit) {
   self->mask &= (self->mask - 1);
   return true;
 }
+/// CWISS_BitMask //////////////////////////////////////////////////////////////
 
-typedef uint8_t CWISS_h2_t;
-
+/// CWISS_ctrl /////////////////////////////////////////////////////////////////
 // The values here are selected for maximum performance. See the static
 // CWISS_DCHECKs below for details.
 typedef int8_t CWISS_ctrl_t;
@@ -177,7 +200,6 @@ static_assert(CWISS_kDeleted == -2,
 
 // A single block of empty control bytes for tables without any slots allocated.
 // This enables removing a branch in the hot path of find().
-
 alignas(16) static const CWISS_ctrl_t CWISS_kEmptyGroup[16] = {
     CWISS_kSentinel, CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
     CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
@@ -201,6 +223,8 @@ static inline size_t CWISS_HashSeed(const CWISS_ctrl_t* ctrl) {
 static inline size_t CWISS_H1(size_t hash, const CWISS_ctrl_t* ctrl) {
   return (hash >> 7) ^ CWISS_HashSeed(ctrl);
 }
+
+typedef uint8_t CWISS_h2_t;
 static inline CWISS_h2_t CWISS_H2(size_t hash) { return hash & 0x7F; }
 
 static inline bool CWISS_IsEmpty(CWISS_ctrl_t c) { return c == CWISS_kEmpty; }
@@ -211,9 +235,12 @@ static inline bool CWISS_IsDeleted(CWISS_ctrl_t c) {
 static inline bool CWISS_IsEmptyOrDeleted(CWISS_ctrl_t c) {
   return c < CWISS_kSentinel;
 }
+/// CWISS_ctrl /////////////////////////////////////////////////////////////////
 
+/// CWISS_Group ////////////////////////////////////////////////////////////////
 #define CWISS_Group_BitMask(x) \
   (CWISS_BitMask){(uint64_t)(x), CWISS_Group_kWidth, CWISS_Group_kShift};
+
 #if CWISS_HAVE_SSE2
 // https://github.com/abseil/abseil-cpp/issues/209
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87853
@@ -344,11 +371,12 @@ static inline void CWISS_Group_ConvertSpecialToEmptyAndFullToDeleted(
   memcpy(dst, &res, sizeof(*dst));
 }
 #endif  // CWISS_HAVE_SSE2
+/// CWISS_Group ////////////////////////////////////////////////////////////////
 
+/// Capacity/insertion formulae ////////////////////////////////////////////////
 // The number of cloned control bytes that we copy from the beginning to the
 // end of the control bytes array.
-// constexpr size_t NumClonedBytes() { return Group::kWidth - 1; }
-#define CWISS_kNumClonedBytes ((size_t)CWISS_Group_kWidth - 1)
+#define CWISS_NumClonedBytes() ((size_t)CWISS_Group_kWidth - 1)
 
 static inline bool CWISS_IsValidCapacity(size_t n) {
   return ((n + 1) & n) == 0 && n > 0;
@@ -359,12 +387,9 @@ static inline size_t RandomSeed() {
 #ifdef CWISS_HAVE_THREAD_LOCAL
   static thread_local size_t counter;
   size_t value = ++counter;
-#elif defined(__cplusplus)
-  static std::atomic<size_t> counter;
-  size_t value = counter.fetch_add(1, std::memory_order_relaxed);
 #else
-  static volatile _Atomic size_t counter;
-  size_t value = atomic_fetch_add_explicit(&counter, 1, memory_order_relaxed);
+  static volatile CWISS_ATOMIC_T(size_t) counter;
+  size_t value = CWISS_ATOMIC_INC(counter);
 #endif  // ABSL_HAVE_THREAD_LOCAL
   return value ^ ((size_t)&counter);
 }
@@ -398,7 +423,7 @@ CWISS_NOINLINE static void CWISS_ConvertDeletedToEmptyAndFullToDeleted(
     CWISS_Group_ConvertSpecialToEmptyAndFullToDeleted(&g, pos);
   }
   // Copy the cloned ctrl bytes.
-  memcpy(ctrl + capacity + 1, ctrl, CWISS_kNumClonedBytes);
+  memcpy(ctrl + capacity + 1, ctrl, CWISS_NumClonedBytes());
   ctrl[capacity] = CWISS_kSentinel;
 }
 
@@ -465,7 +490,9 @@ static inline size_t CWISS_GrowthToLowerboundCapacity(size_t growth) {
               "Invalid operation on iterator (%p/%d). The element might have " \
               "been erased, or the table might have rehashed.",                \
               (ctrl), (ctrl) ? *(ctrl) : -1)
+/// Capacity/insertion formulae ////////////////////////////////////////////////
 
+/// Probing ////////////////////////////////////////////////////////////////////
 typedef struct {
   size_t offset;
   size_t probe_length;
@@ -556,16 +583,15 @@ static inline CWISS_FindInfo CWISS_find_first_non_full(const CWISS_ctrl_t* ctrl,
     CWISS_DCHECK(seq.index_ <= capacity, "full table!");
   }
 }
+/// Probing ////////////////////////////////////////////////////////////////////
 
-// // Extern template for inline function keep possibility of inlining.
-// // When compiler decided to not inline, no symbols will be added to the
-// // corresponding translation unit.
-// extern template FindInfo find_first_non_full(const ctrl_t*, size_t, size_t);
+/// ctrl_t operations //////////////////////////////////////////////////////////
+// TODO: Fold int ctrl_t section?
 
 // Reset all ctrl bytes back to ctrl_t::kEmpty, except the sentinel.
 static inline void CWISS_ResetCtrl(size_t capacity, CWISS_ctrl_t* ctrl,
                                    const void* slot, size_t slot_size) {
-  memset(ctrl, CWISS_kEmpty, capacity + 1 + CWISS_kNumClonedBytes);
+  memset(ctrl, CWISS_kEmpty, capacity + 1 + CWISS_NumClonedBytes());
   ctrl[capacity] = CWISS_kSentinel;
   // SanitizerPoisonMemoryRegion(slot, slot_size * capacity);
 }
@@ -586,17 +612,19 @@ static inline void CWISS_SetCtrl(size_t i, CWISS_ctrl_t h, size_t capacity,
   }*/
 
   ctrl[i] = h;
-  ctrl[((i - CWISS_kNumClonedBytes) & capacity) +
-       (CWISS_kNumClonedBytes & capacity)] = h;
+  ctrl[((i - CWISS_NumClonedBytes()) & capacity) +
+       (CWISS_NumClonedBytes() & capacity)] = h;
 }
+/// ctrl_t operations //////////////////////////////////////////////////////////
 
+/// Allocation formulae ////////////////////////////////////////////////////////
 // The allocated block consists of `capacity + 1 + NumClonedBytes()` control
 // bytes followed by `capacity` slots, which must be aligned to `slot_align`.
 // SlotOffset returns the offset of the slots into the allocated block.
 static inline size_t CWISS_SlotOffset(size_t capacity, size_t slot_align) {
   CWISS_DCHECK(CWISS_IsValidCapacity(capacity), "invalid capacity: %zu",
                capacity);
-  const size_t num_control_bytes = capacity + 1 + CWISS_kNumClonedBytes;
+  const size_t num_control_bytes = capacity + 1 + CWISS_NumClonedBytes();
   return (num_control_bytes + slot_align - 1) & (~slot_align + 1);
 }
 
@@ -605,7 +633,9 @@ static inline size_t CWISS_AllocSize(size_t capacity, size_t slot_size,
                                      size_t slot_align) {
   return CWISS_SlotOffset(capacity, slot_align) + capacity * slot_size;
 }
+/// Allocation formulae ////////////////////////////////////////////////////////
 
+/// Policies ///////////////////////////////////////////////////////////////////
 typedef size_t (*CWISS_Hasher)(const void* val, size_t len);
 typedef bool (*CWISS_Eq)(const void* a, const void* b, size_t len);
 typedef void* (*CWISS_Alloc)(size_t size, size_t align);
@@ -700,7 +730,9 @@ static void CWISS_Policy_CopyDefault(void* dest, const void* src, size_t len) {
       CWISS_POLICY_WITH_FIELD_(copy, CWISS_Policy_CopyDefault, __VA_ARGS__),   \
       CWISS_POLICY_WITH_FIELD_(move, CWISS_Policy_CopyDefault, __VA_ARGS__),   \
   })
+/// Policies ///////////////////////////////////////////////////////////////////
 
+/// RawHashSet /////////////////////////////////////////////////////////////////
 typedef struct {
   CWISS_ctrl_t* ctrl_;  // [(capacity + 1 + NumClonedBytes()) * ctrl_t]
   char* slots_;         // [capacity * slot_type]
@@ -1394,6 +1426,7 @@ static inline bool CWISS_RawHashSet_contains(const CWISS_Policy* policy,
                                              const void* key) {
   return CWISS_RawHashSet_find(policy, self, key).slot_ != NULL;
 }
+/// RawHashSet /////////////////////////////////////////////////////////////////
 
 CWISS_END_
 CWISS_END_EXTERN_
