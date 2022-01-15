@@ -399,7 +399,7 @@ TEST(Group, CountLeadingEmptyOrDeleted) {
 //   using Base::Base;
 // };
 
-size_t HashStdString(const void* p, size_t) {
+size_t HashStdString(const void* p) {
   const auto* s = static_cast<const std::string*>(p);
 
   CWISS_FxHash_State state = 0;
@@ -454,7 +454,7 @@ using Uint8Table = UnprefixTable<uint8_t>;
 //   }
 // };
 
-size_t BadFastHash(const void*, size_t) { return 0; }
+size_t BadFastHash(const void*) { return 0; }
 
 // struct BadTable : raw_hash_set<IntPolicy, BadFastHash, std::equal_to<int>,
 //                                std::allocator<int>> {
@@ -903,7 +903,7 @@ size_t MaxDensitySize(size_t n) {
 //   size_t operator()(int x) const { return x % 1000; }
 // };
 
-size_t Modulo1000Hash(const void* p, size_t) {
+size_t Modulo1000Hash(const void* p) {
   return *static_cast<const int*>(p) % 1000;
 }
 

@@ -187,32 +187,43 @@ CWISS_BIND_FUNC(ConvertDeletedToEmptyAndFullToDeleted);
 CWISS_BIND_FUNC(IsFull);
 
 // CwissTable is approximately, but not quite, raw_hash_map.
-template <typename V, CWISS_Hasher Hash = CWISS_Policy_HashDefault>
+template <typename V, size_t (*Hash)(const void*) = nullptr>
 struct UnprefixTable {
   static constexpr CWISS_Policy kPolicy = {
       .size = sizeof(V),
       .align = alignof(V),
-      .hash = +[](const void* val, size_t len) { return Hash(val, len); },
+      .hash =
+          +[](const void* val) {
+            if constexpr (Hash == nullptr) {
+              CWISS_FxHash_State state = 0;
+              CWISS_FxHash_Write(&state, val, sizeof(V));
+              return state;
+            }
+            return Hash(val);
+          },
       .eq =
-          +[](const void* a, const void* b, size_t) {
+          +[](const void* a, const void* b) {
             return *static_cast<const V*>(a) == *static_cast<const V*>(b);
           },
       .alloc =
           +[](size_t size, size_t align) {
             return ::operator new(size, static_cast<std::align_val_t>(align));
           },
-      .free =
-          +[](void* ptr, size_t size, size_t align) {
-            return ::operator delete(ptr);
+      .free = +[](void* ptr, size_t size,
+                  size_t align) { return ::operator delete(ptr); },
+      .copy_value =
+          +[](void* dst, const void* src) {
+            new (dst) V(*static_cast<const V*>(src));
           },
-      .destroy = +[](void* x, size_t) { static_cast<V*>(x)->~V(); },
-      .copy = +[](void* dst, const void* src,
-                  size_t) { new (dst) V(*static_cast<const V*>(src)); },
-      .move =
-          +[](void* dst, const void* src, size_t) {
+      .new_slot = +[](void*) {},
+      .del_slot = NULL,
+      .txfer_slot =
+          +[](void* dst, void* src) {
             V* old = const_cast<V*>(static_cast<const V*>(src));
             new (dst) V(std::move(*old));
+            old->~V();
           },
+      .element = +[](void* slot) { return slot; },
   };
 
   // Amazingly, you can stick this in class scope and it somehow
