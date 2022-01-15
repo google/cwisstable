@@ -719,27 +719,27 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
   *state = state_;
 }
 
-#define CWISS_DECLARE_FLAT_POLICY(kPolicy_, Type_, hash_, eq_)          \
-  static inline void kPolicy_##copy_value(void* dst, const void* src) { \
-    memcpy(dst, src, sizeof(Type_));                                    \
-  }                                                                     \
-  static inline void kPolicy_##new_slot(void* slot) {}                  \
-  static inline void kPolicy_##txfer_slot(void* dst, void* src) {       \
-    memcpy(dst, src, sizeof(Type_));                                    \
-  }                                                                     \
-  static inline void* kPolicy_##element(void* slot) { return slot; }    \
-  static const CWISS_Policy kPolicy_ = ((CWISS_Policy){                 \
-      sizeof(Type_),                                                    \
-      alignof(Type_),                                                   \
-      hash_,                                                            \
-      eq_,                                                              \
-      CWISS_malloc,                                                     \
-      CWISS_free,                                                       \
-      kPolicy_##copy_value,                                             \
-      kPolicy_##new_slot,                                               \
-      NULL,                                                             \
-      kPolicy_##txfer_slot,                                             \
-      kPolicy_##element,                                                \
+#define CWISS_DECLARE_FLAT_POLICY(kPolicy_, Type_, hash_, eq_)           \
+  static inline void kPolicy_##_copy_value(void* dst, const void* src) { \
+    memcpy(dst, src, sizeof(Type_));                                     \
+  }                                                                      \
+  static inline void kPolicy_##_new_slot(void* slot) {}                  \
+  static inline void kPolicy_##_txfer_slot(void* dst, void* src) {       \
+    memcpy(dst, src, sizeof(Type_));                                     \
+  }                                                                      \
+  static inline void* kPolicy_##_element(void* slot) { return slot; }    \
+  static const CWISS_Policy kPolicy_ = ((CWISS_Policy){                  \
+      sizeof(Type_),                                                     \
+      alignof(Type_),                                                    \
+      hash_,                                                             \
+      eq_,                                                               \
+      CWISS_malloc,                                                      \
+      CWISS_free,                                                        \
+      kPolicy_##_copy_value,                                             \
+      kPolicy_##_new_slot,                                               \
+      NULL,                                                              \
+      kPolicy_##_txfer_slot,                                             \
+      kPolicy_##_element,                                                \
   })
 
 #define CWISS_DECLARE_POD_FLAT_POLICY(kPolicy_, Type_)             \
@@ -753,33 +753,52 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
   }                                                                \
   CWISS_DECLARE_FLAT_POLICY(kPolicy_, Type_, kPolicy_##_hash, kPolicy_##_eq)
 
-#define CWISS_DECLARE_NODE_POLICY(kPolicy_, Type_, hash_, eq_)                \
-  static inline void kPolicy_##copy_value(void* dst, const void* src) {       \
-    memcpy(dst, src, sizeof(Type_));                                          \
-  }                                                                           \
-  static inline void kPolicy_##new_slot(void* slot) {                         \
-    void* node = CWISS_malloc(sizeof(Type_), alignof(Type_));                 \
-    memcpy(slot, &node, sizeof(node));                                        \
-  }                                                                           \
-  static inline void kPolicy_##del_slot(void* slot) {                         \
-    CWISS_free(*(void**)slot, sizeof(Type_), alignof(Type_));                 \
-  }                                                                           \
-  static inline void kPolicy_##txfer_slot(void* dst, void* src) {             \
-    memcpy(dst, src, sizeof(void*));                                          \
-  }                                                                           \
-  static inline void* kPolicy_##element(void* slot) { return *(void**)slot; } \
-  static const CWISS_Policy kPolicy_ = ((CWISS_Policy){                       \
-      sizeof(Type_*),                                                         \
-      alignof(Type_*),                                                        \
-      hash_,                                                                  \
-      eq_,                                                                    \
-      CWISS_malloc,                                                           \
-      CWISS_free,                                                             \
-      kPolicy_##copy_value,                                                   \
-      kPolicy_##new_slot,                                                     \
-      NULL,                                                                   \
-      kPolicy_##txfer_slot,                                                   \
-      kPolicy_##element,                                                      \
+#define CWISS_DECLARE_FLAT_MAP_POLICY(kPolicy_, K_, V_, hash_, eq_) \
+  typedef struct {                                                  \
+    K_ k;                                                           \
+    V_ V;                                                           \
+  } kPolicy_##_Entry;                                               \
+  CWISS_DECLARE_FLAT_POLICY(kPolicy_, kPolicy_##_Entry, hash_, eq_)
+
+#define CWISS_DECLARE_POD_FLAT_MAP_POLICY(kPolicy_, K_, V_)        \
+  static inline size_t kPolicy_##_hash(const void* val) {          \
+    CWISS_FxHash_State state = 0;                                  \
+    CWISS_FxHash_Write(&state, val, sizeof(K_));                   \
+    return state;                                                  \
+  }                                                                \
+  static inline bool kPolicy_##_eq(const void* a, const void* b) { \
+    return memcmp(a, b, sizeof(K_)) == 0;                          \
+  }                                                                \
+  CWISS_DECLARE_FLAT_MAP_POLICY(kPolicy_, K_, V_, kPolicy_##_hash, \
+                                kPolicy_##_eq)
+
+#define CWISS_DECLARE_NODE_POLICY(kPolicy_, Type_, hash_, eq_)                 \
+  static inline void kPolicy_##_copy_value(void* dst, const void* src) {       \
+    memcpy(dst, src, sizeof(Type_));                                           \
+  }                                                                            \
+  static inline void kPolicy_##_new_slot(void* slot) {                         \
+    void* node = CWISS_malloc(sizeof(Type_), alignof(Type_));                  \
+    memcpy(slot, &node, sizeof(node));                                         \
+  }                                                                            \
+  static inline void kPolicy_##_del_slot(void* slot) {                         \
+    CWISS_free(*(void**)slot, sizeof(Type_), alignof(Type_));                  \
+  }                                                                            \
+  static inline void kPolicy_##_txfer_slot(void* dst, void* src) {             \
+    memcpy(dst, src, sizeof(void*));                                           \
+  }                                                                            \
+  static inline void* kPolicy_##_element(void* slot) { return *(void**)slot; } \
+  static const CWISS_Policy kPolicy_ = ((CWISS_Policy){                        \
+      sizeof(Type_*),                                                          \
+      alignof(Type_*),                                                         \
+      hash_,                                                                   \
+      eq_,                                                                     \
+      CWISS_malloc,                                                            \
+      CWISS_free,                                                              \
+      kPolicy_##_copy_value,                                                   \
+      kPolicy_##_new_slot,                                                     \
+      NULL,                                                                    \
+      kPolicy_##_txfer_slot,                                                   \
+      kPolicy_##_element,                                                      \
   })
 
 #define CWISS_DECLARE_POD_NODE_POLICY(kPolicy_, Type_)             \
@@ -792,6 +811,25 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
     return memcmp(a, b, sizeof(Type_)) == 0;                       \
   }                                                                \
   CWISS_DECLARE_NODE_POLICY(kPolicy_, Type_, kPolicy_##_hash, kPolicy_##_eq)
+
+#define CWISS_DECLARE_NODE_MAP_POLICY(kPolicy_, K_, V_, hash_, eq_) \
+  typedef struct {                                                  \
+    K_ k;                                                           \
+    V_ V;                                                           \
+  } kPolicy_##_Entry;                                               \
+  CWISS_DECLARE_NODE_POLICY(kPolicy_, kPolicy_##_Entry, hash_, eq_)
+
+#define CWISS_DECLARE_POD_NODE_MAP_POLICY(kPolicy_, K_, V_)        \
+  static inline size_t kPolicy_##_hash(const void* val) {          \
+    CWISS_FxHash_State state = 0;                                  \
+    CWISS_FxHash_Write(&state, val, sizeof(K_));                   \
+    return state;                                                  \
+  }                                                                \
+  static inline bool kPolicy_##_eq(const void* a, const void* b) { \
+    return memcmp(a, b, sizeof(K_)) == 0;                          \
+  }                                                                \
+  CWISS_DECLARE_NODE_MAP_POLICY(kPolicy_, K_, V_, kPolicy_##_hash, \
+                                kPolicy_##_eq)
 
 /// Policies ///////////////////////////////////////////////////////////////////
 
@@ -1612,5 +1650,137 @@ CWISS_END_EXTERN_
                                                                                \
   CWISS_END_                                                                   \
   /* Force a semicolon. */ struct HashSet_##_NeedsTrailingSemicolon_ { int x; }
+
+#define CWISS_DECLARE_FLAT_HASHMAP(HashMap_, K_, V_)             \
+  CWISS_DECLARE_POD_FLAT_MAP_POLICY(HashMap_##_kPolicy, K_, V_); \
+  CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, HashMap_##_kPolicy)
+
+#define CWISS_DECLARE_NODE_HASHMAP(HashMap_, K_, V_)             \
+  CWISS_DECLARE_POD_NODE_MAP_POLICY(HashMap_##_kPolicy, K_, V_); \
+  CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, HashMap_##_kPolicy)
+
+#define CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, kPolicy_)                 \
+  CWISS_BEGIN_                                                                 \
+  static inline const CWISS_Policy* HashMap_##_policy() { return &kPolicy_; }  \
+  typedef struct {                                                             \
+    K_ key;                                                                    \
+    V_ val;                                                                    \
+  } HashMap_##_Entry;                                                          \
+                                                                               \
+  typedef struct {                                                             \
+    CWISS_RawHashSet set_;                                                     \
+  } HashMap_;                                                                  \
+  static inline void HashMap_##_dump(const HashMap_* self) {                   \
+    CWISS_RawHashSet_dump(&kPolicy_, &self->set_);                             \
+  }                                                                            \
+                                                                               \
+  static inline HashMap_ HashMap_##_new(size_t bucket_count) {                 \
+    return (HashMap_){CWISS_RawHashSet_new(&kPolicy_, bucket_count)};          \
+  }                                                                            \
+  static inline HashMap_ HashMap_##_dup(const HashMap_* that) {                \
+    return (HashMap_){CWISS_RawHashSet_dup(&kPolicy_, &that->set_)};           \
+  }                                                                            \
+  static inline void HashMap_##_destroy(HashMap_* self) {                      \
+    CWISS_RawHashSet_destroy(&kPolicy_, &self->set_);                          \
+  }                                                                            \
+                                                                               \
+  typedef struct {                                                             \
+    CWISS_RawIter it_;                                                         \
+  } HashMap_##_Iter;                                                           \
+  static inline HashMap_##_Iter HashMap_##_iter(HashMap_* self) {              \
+    return (HashMap_##_Iter){CWISS_RawHashSet_iter(&kPolicy_, &self->set_)};   \
+  }                                                                            \
+  static inline HashMap_##_Entry* HashMap_##_Iter_get(                         \
+      const HashMap_##_Iter* it) {                                             \
+    return (HashMap_##_Entry*)CWISS_RawIter_get(&kPolicy_, &it->it_);          \
+  }                                                                            \
+  static inline HashMap_##_Entry* HashMap_##_Iter_next(HashMap_##_Iter* it) {  \
+    return (HashMap_##_Entry*)CWISS_RawIter_next(&kPolicy_, &it->it_);         \
+  }                                                                            \
+                                                                               \
+  typedef struct {                                                             \
+    CWISS_RawIter it_;                                                         \
+  } HashMap_##_CIter;                                                          \
+  static inline HashMap_##_CIter HashMap_##_citer(const HashMap_* self) {      \
+    return (HashMap_##_CIter){CWISS_RawHashSet_citer(&kPolicy_, &self->set_)}; \
+  }                                                                            \
+  static inline const HashMap_##_Entry* HashMap_##_CIter_get(                  \
+      const HashMap_##_Iter* it) {                                             \
+    return (const HashMap_##_Entry*)CWISS_RawIter_get(&kPolicy_, &it->it_);    \
+  }                                                                            \
+  static inline const HashMap_##_Entry* HashMap_##_CIter_next(                 \
+      HashMap_##_Iter* it) {                                                   \
+    return (const HashMap_##_Entry*)CWISS_RawIter_next(&kPolicy_, &it->it_);   \
+  }                                                                            \
+  static inline HashMap_##_CIter HashMap_##_Iter_const(HashMap_##_Iter it) {   \
+    return (HashMap_##_CIter){it.it_};                                         \
+  }                                                                            \
+                                                                               \
+  static inline void HashMap_##_reserve(HashMap_* self, size_t n) {            \
+    CWISS_RawHashSet_reserve(&kPolicy_, &self->set_, n);                       \
+  }                                                                            \
+  static inline void HashMap_##_rehash(HashMap_* self, size_t n) {             \
+    CWISS_RawHashSet_rehash(&kPolicy_, &self->set_, n);                        \
+  }                                                                            \
+                                                                               \
+  static inline bool HashMap_##_empty(const HashMap_* self) {                  \
+    return CWISS_RawHashSet_empty(&kPolicy_, &self->set_);                     \
+  }                                                                            \
+  static inline size_t HashMap_##_size(const HashMap_* self) {                 \
+    return CWISS_RawHashSet_size(&kPolicy_, &self->set_);                      \
+  }                                                                            \
+  static inline size_t HashMap_##_capacity(const HashMap_* self) {             \
+    return CWISS_RawHashSet_capacity(&kPolicy_, &self->set_);                  \
+  }                                                                            \
+                                                                               \
+  static inline void HashMap_##_clear(HashMap_* self) {                        \
+    return CWISS_RawHashSet_clear(&kPolicy_, &self->set_);                     \
+  }                                                                            \
+                                                                               \
+  typedef struct {                                                             \
+    HashMap_##_Iter iter;                                                      \
+    bool inserted;                                                             \
+  } HashMap_##_Insert;                                                         \
+  static inline HashMap_##_Insert HashMap_##_insert(HashMap_* self,            \
+                                                    HashMap_##_Entry* val) {   \
+    CWISS_Insert ret = CWISS_RawHashSet_insert(&kPolicy_, &self->set_, val);   \
+    return (HashMap_##_Insert){{ret.iter}, ret.inserted};                      \
+  }                                                                            \
+                                                                               \
+  static inline HashMap_##_CIter HashMap_##_cfind_hinted(                      \
+      const HashMap_* self, const K_* key, size_t hash) {                      \
+    return (HashMap_##_CIter){                                                 \
+        CWISS_RawHashSet_find_hinted(&kPolicy_, &self->set_, key, hash)};      \
+  }                                                                            \
+  static inline HashMap_##_Iter HashMap_##_find_hinted(                        \
+      HashMap_* self, const K_* key, size_t hash) {                            \
+    return (HashMap_##_Iter){                                                  \
+        CWISS_RawHashSet_find_hinted(&kPolicy_, &self->set_, key, hash)};      \
+  }                                                                            \
+  static inline HashMap_##_CIter HashMap_##_cfind(const HashMap_* self,        \
+                                                  const K_* key) {             \
+    return (HashMap_##_CIter){                                                 \
+        CWISS_RawHashSet_find(&kPolicy_, &self->set_, key)};                   \
+  }                                                                            \
+  static inline HashMap_##_Iter HashMap_##_find(HashMap_* self,                \
+                                                const K_* key) {               \
+    return (HashMap_##_Iter){                                                  \
+        CWISS_RawHashSet_find(&kPolicy_, &self->set_, key)};                   \
+  }                                                                            \
+                                                                               \
+  static inline bool HashMap_##_contains(const HashMap_* self,                 \
+                                         const K_* key) {                      \
+    return CWISS_RawHashSet_contains(&kPolicy_, &self->set_, key);             \
+  }                                                                            \
+                                                                               \
+  static inline void HashMap_##_erase_at(HashMap_##_Iter it) {                 \
+    CWISS_RawHashSet_erase_at(&kPolicy_, it.it_);                              \
+  }                                                                            \
+  static inline void HashMap_##_erase(HashMap_* self, const K_* key) {         \
+    CWISS_RawHashSet_erase(&kPolicy_, &self->set_, key);                       \
+  }                                                                            \
+                                                                               \
+  CWISS_END_                                                                   \
+  /* Force a semicolon. */ struct HashMap_##_NeedsTrailingSemicolon_ { int x; }
 
 #endif  // CWISSTABLE_H_
