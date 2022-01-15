@@ -223,7 +223,7 @@ struct UnprefixTable {
             new (dst) V(std::move(*old));
             old->~V();
           },
-      .element = +[](void* slot) { return slot; },
+      .get = +[](void* slot) { return slot; },
   };
 
   // Amazingly, you can stick this in class scope and it somehow
