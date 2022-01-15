@@ -16,6 +16,9 @@ cc_library(
     name = "cc_wrappers",
     hdrs = ["cc_wrappers.h"],
     deps = ["//:cwisstable"],
+    copts = [
+      "-std=c++17",
+    ],
 )
 
 cc_test(
