@@ -40,7 +40,7 @@ size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
                                   const CWISS_RawHashSet* set,
                                   const void* key) {
   size_t num_probes = 0;
-  size_t hash = policy->hash(key);
+  size_t hash = policy->key->hash(key);
   auto seq = CWISS_probe(set->ctrl_, hash, set->capacity_);
   while (true) {
     auto g = CWISS_Group_new(set->ctrl_ + seq.offset_);
@@ -48,8 +48,8 @@ size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
     uint32_t i;
     while (CWISS_BitMask_next(&match, &i)) {
       size_t idx = CWISS_probe_seq_offset(&seq, i);
-      char* slot = set->slots_ + idx * policy->size;
-      if (CWISS_LIKELY(policy->eq(slot, key))) return num_probes;
+      char* slot = set->slots_ + idx * policy->slot->size;
+      if (CWISS_LIKELY(policy->key->eq(slot, key))) return num_probes;
 
       ++num_probes;
     }
@@ -65,7 +65,7 @@ size_t AllocatedByteSize(const CWISS_Policy* policy,
                          const CWISS_RawHashSet* set) {
   size_t capacity = set->capacity_;
   if (capacity == 0) return 0;
-  size_t m = CWISS_AllocSize(capacity, policy->size, policy->align);
+  size_t m = CWISS_AllocSize(capacity, policy->slot->size, policy->slot->align);
 
   /* TODO(mcyoung): Ask kfm about this.
   size_t per_slot = Traits::space_used(static_cast<const Slot*>(nullptr));
@@ -86,8 +86,8 @@ size_t AllocatedByteSize(const CWISS_Policy* policy,
 size_t LowerBoundAllocatedByteSize(const CWISS_Policy* policy, size_t size) {
   size_t capacity = CWISS_GrowthToLowerboundCapacity(size);
   if (capacity == 0) return 0;
-  size_t m = CWISS_AllocSize(CWISS_NormalizeCapacity(capacity), policy->size,
-                             policy->align);
+  size_t m = CWISS_AllocSize(CWISS_NormalizeCapacity(capacity),
+                             policy->slot->size, policy->slot->align);
   /*size_t per_slot = Traits::space_used(static_cast<const Slot*>(nullptr));
   if (per_slot != ~size_t{}) {
     m += per_slot * size;
