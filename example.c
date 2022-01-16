@@ -14,11 +14,70 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "cwisstable.h"
 
 CWISS_DECLARE_FLAT_HASHSET(MyIntSet, int);
 CWISS_DECLARE_NODE_HASHMAP(MyIntMap, int, float);
+
+static inline void kCStrPolicy_copy(void* dst, const void* src) {
+  typedef struct {
+    char* k;
+    float v;
+  } entry;
+  const entry* e = (const entry*)src;
+  entry* d = (entry*)dst;
+
+  size_t len = strlen(e->k);
+  d->k = malloc(len + 1);
+  d->v = e->v;
+  memcpy(d->k, e->k, len + 1);
+}
+static inline void kCStrPolicy_dtor(void* val) {
+  char* str = *(char**)val;
+  free(str);
+}
+static const CWISS_ObjectPolicy kCStrObjPolicy = {
+    sizeof(struct {
+      const char* c;
+      float f;
+    }),
+    alignof(struct {
+      const char* c;
+      float f;
+    }),
+    kCStrPolicy_copy,
+    kCStrPolicy_dtor,
+};
+
+static inline size_t kCStrPolicy_hash(const void* val) {
+  const char* str = *(const char**)val;
+  size_t len = strlen(str);
+  CWISS_FxHash_State state = 0;
+  CWISS_FxHash_Write(&state, str, len);
+  return state;
+}
+static inline bool kCStrPolicy_eq(const void* a, const void* b) {
+  const char* ap = *(const char**)a;
+  const char* bp = *(const char**)b;
+  return strcmp(ap, bp) == 0;
+}
+static const CWISS_KeyPolicy kCStrKeyPolicy = {
+    kCStrPolicy_hash,
+    kCStrPolicy_eq,
+};
+
+CWISS_DECLARE_NODE_SLOT_POLICY(kCStrSlotPolicy, kCStrObjPolicy, const char*);
+
+static const CWISS_Policy kCStrPolicy = {
+    &kCStrObjPolicy,
+    &kCStrKeyPolicy,
+    &CWISS_kDefaultAlloc,
+    &kCStrSlotPolicy,
+};
+
+CWISS_DECLARE_HASHMAP_WITH(MyCStrMap, const char*, float, kCStrPolicy);
 
 void test_set(void) {
   MyIntSet set = MyIntSet_new(8);
@@ -119,8 +178,63 @@ void test_map(void) {
   MyIntMap_destroy(&map);
 }
 
+void test_str_map(void) {
+  MyCStrMap map = MyCStrMap_new(8);
+
+  static const char* kStrings[] = {
+      "abcd", "efgh", "ijkh", "lmno", "pqrs", "tuvw", "xyza", "bcde",
+  };
+
+  for (int i = 0; i < 8; ++i) {
+    int val = i * i + 1;
+    MyCStrMap_Entry e = {kStrings[i], sin(val)};
+    MyCStrMap_dump(&map);
+    MyCStrMap_insert(&map, &e);
+  }
+  MyCStrMap_dump(&map);
+  printf("\n");
+
+  const char* k = "missing";
+  assert(!MyCStrMap_contains(&map, &k));
+  k = "lmno";
+  MyCStrMap_Iter it = MyCStrMap_find(&map, &k);
+  MyCStrMap_Entry* v = MyCStrMap_Iter_get(&it);
+  assert(v);
+  printf("5: %p: \"%s\"->%f\n", v, v->key, v->val);
+
+  MyCStrMap_rehash(&map, 16);
+
+  it = MyCStrMap_find(&map, &k);
+  v = MyCStrMap_Iter_get(&it);
+  assert(v);
+  printf("5: %p: \"%s\"->%f\n", v, v->key, v->val);
+
+  printf("entries:\n");
+  it = MyCStrMap_iter(&map);
+  for (MyCStrMap_Entry* p = MyCStrMap_Iter_get(&it); p != NULL;
+       p = MyCStrMap_Iter_next(&it)) {
+    printf("\"%s\"->%f\n", p->key, p->val);
+  }
+  printf("\n");
+
+  MyCStrMap_erase(&map, &k);
+  assert(!MyCStrMap_contains(&map, &k));
+
+  printf("entries:\n");
+  it = MyCStrMap_iter(&map);
+  for (MyCStrMap_Entry* p = MyCStrMap_Iter_get(&it); p != NULL;
+       p = MyCStrMap_Iter_next(&it)) {
+    printf("\"%s\"->%f\n", p->key, p->val);
+  }
+  printf("\n");
+
+  MyCStrMap_dump(&map);
+  MyCStrMap_destroy(&map);
+}
+
 int main(void) {
   test_set();
   test_map();
+  test_str_map();
   return 0;
 }
