@@ -1542,7 +1542,25 @@ CWISS_END_EXTERN_
   CWISS_DECLARE_POD_NODE_POLICY(HashSet_##_kPolicy, Type_); \
   CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, HashSet_##_kPolicy)
 
-#define CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, kPolicy_)                  \
+#define CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, kPolicy_) \
+  CWISS_DECLARE_COMMON_(HashSet_, Type_, Type_, kPolicy_)
+
+#define CWISS_DECLARE_FLAT_HASHMAP(HashMap_, K_, V_)             \
+  CWISS_DECLARE_POD_FLAT_MAP_POLICY(HashMap_##_kPolicy, K_, V_); \
+  CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, HashMap_##_kPolicy)
+
+#define CWISS_DECLARE_NODE_HASHMAP(HashMap_, K_, V_)             \
+  CWISS_DECLARE_POD_NODE_MAP_POLICY(HashMap_##_kPolicy, K_, V_); \
+  CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, HashMap_##_kPolicy)
+
+#define CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, kPolicy_) \
+  typedef struct {                                             \
+    K_ key;                                                    \
+    V_ val;                                                    \
+  } HashMap_##_Entry;                                          \
+  CWISS_DECLARE_COMMON_(HashMap_, HashMap_##_Entry, K_, kPolicy_)
+
+#define CWISS_DECLARE_COMMON_(HashSet_, Type_, Key_, kPolicy_)                  \
   CWISS_BEGIN_                                                                 \
   static inline const CWISS_Policy* HashSet_##_policy() { return &kPolicy_; }  \
                                                                                \
@@ -1629,166 +1647,34 @@ CWISS_END_EXTERN_
         CWISS_RawHashSet_find_hinted(&kPolicy_, &self->set_, key, hash)};      \
   }                                                                            \
   static inline HashSet_##_Iter HashSet_##_find_hinted(                        \
-      HashSet_* self, const Type_* key, size_t hash) {                         \
+      HashSet_* self, const Key_* key, size_t hash) {                          \
     return (HashSet_##_Iter){                                                  \
         CWISS_RawHashSet_find_hinted(&kPolicy_, &self->set_, key, hash)};      \
   }                                                                            \
   static inline HashSet_##_CIter HashSet_##_cfind(const HashSet_* self,        \
-                                                  const Type_* key) {          \
+                                                  const Key_* key) {           \
     return (HashSet_##_CIter){                                                 \
         CWISS_RawHashSet_find(&kPolicy_, &self->set_, key)};                   \
   }                                                                            \
   static inline HashSet_##_Iter HashSet_##_find(HashSet_* self,                \
-                                                const Type_* key) {            \
+                                                const Key_* key) {             \
     return (HashSet_##_Iter){                                                  \
         CWISS_RawHashSet_find(&kPolicy_, &self->set_, key)};                   \
   }                                                                            \
                                                                                \
   static inline bool HashSet_##_contains(const HashSet_* self,                 \
-                                         const Type_* key) {                   \
+                                         const Key_* key) {                    \
     return CWISS_RawHashSet_contains(&kPolicy_, &self->set_, key);             \
   }                                                                            \
                                                                                \
   static inline void HashSet_##_erase_at(HashSet_##_Iter it) {                 \
     CWISS_RawHashSet_erase_at(&kPolicy_, it.it_);                              \
   }                                                                            \
-  static inline void HashSet_##_erase(HashSet_* self, const Type_* key) {      \
+  static inline void HashSet_##_erase(HashSet_* self, const Key_* key) {       \
     CWISS_RawHashSet_erase(&kPolicy_, &self->set_, key);                       \
   }                                                                            \
                                                                                \
   CWISS_END_                                                                   \
   /* Force a semicolon. */ struct HashSet_##_NeedsTrailingSemicolon_ { int x; }
-
-#define CWISS_DECLARE_FLAT_HASHMAP(HashMap_, K_, V_)             \
-  CWISS_DECLARE_POD_FLAT_MAP_POLICY(HashMap_##_kPolicy, K_, V_); \
-  CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, HashMap_##_kPolicy)
-
-#define CWISS_DECLARE_NODE_HASHMAP(HashMap_, K_, V_)             \
-  CWISS_DECLARE_POD_NODE_MAP_POLICY(HashMap_##_kPolicy, K_, V_); \
-  CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, HashMap_##_kPolicy)
-
-#define CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, kPolicy_)                 \
-  CWISS_BEGIN_                                                                 \
-  static inline const CWISS_Policy* HashMap_##_policy() { return &kPolicy_; }  \
-  typedef struct {                                                             \
-    K_ key;                                                                    \
-    V_ val;                                                                    \
-  } HashMap_##_Entry;                                                          \
-                                                                               \
-  typedef struct {                                                             \
-    CWISS_RawHashSet set_;                                                     \
-  } HashMap_;                                                                  \
-  static inline void HashMap_##_dump(const HashMap_* self) {                   \
-    CWISS_RawHashSet_dump(&kPolicy_, &self->set_);                             \
-  }                                                                            \
-                                                                               \
-  static inline HashMap_ HashMap_##_new(size_t bucket_count) {                 \
-    return (HashMap_){CWISS_RawHashSet_new(&kPolicy_, bucket_count)};          \
-  }                                                                            \
-  static inline HashMap_ HashMap_##_dup(const HashMap_* that) {                \
-    return (HashMap_){CWISS_RawHashSet_dup(&kPolicy_, &that->set_)};           \
-  }                                                                            \
-  static inline void HashMap_##_destroy(HashMap_* self) {                      \
-    CWISS_RawHashSet_destroy(&kPolicy_, &self->set_);                          \
-  }                                                                            \
-                                                                               \
-  typedef struct {                                                             \
-    CWISS_RawIter it_;                                                         \
-  } HashMap_##_Iter;                                                           \
-  static inline HashMap_##_Iter HashMap_##_iter(HashMap_* self) {              \
-    return (HashMap_##_Iter){CWISS_RawHashSet_iter(&kPolicy_, &self->set_)};   \
-  }                                                                            \
-  static inline HashMap_##_Entry* HashMap_##_Iter_get(                         \
-      const HashMap_##_Iter* it) {                                             \
-    return (HashMap_##_Entry*)CWISS_RawIter_get(&kPolicy_, &it->it_);          \
-  }                                                                            \
-  static inline HashMap_##_Entry* HashMap_##_Iter_next(HashMap_##_Iter* it) {  \
-    return (HashMap_##_Entry*)CWISS_RawIter_next(&kPolicy_, &it->it_);         \
-  }                                                                            \
-                                                                               \
-  typedef struct {                                                             \
-    CWISS_RawIter it_;                                                         \
-  } HashMap_##_CIter;                                                          \
-  static inline HashMap_##_CIter HashMap_##_citer(const HashMap_* self) {      \
-    return (HashMap_##_CIter){CWISS_RawHashSet_citer(&kPolicy_, &self->set_)}; \
-  }                                                                            \
-  static inline const HashMap_##_Entry* HashMap_##_CIter_get(                  \
-      const HashMap_##_Iter* it) {                                             \
-    return (const HashMap_##_Entry*)CWISS_RawIter_get(&kPolicy_, &it->it_);    \
-  }                                                                            \
-  static inline const HashMap_##_Entry* HashMap_##_CIter_next(                 \
-      HashMap_##_Iter* it) {                                                   \
-    return (const HashMap_##_Entry*)CWISS_RawIter_next(&kPolicy_, &it->it_);   \
-  }                                                                            \
-  static inline HashMap_##_CIter HashMap_##_Iter_const(HashMap_##_Iter it) {   \
-    return (HashMap_##_CIter){it.it_};                                         \
-  }                                                                            \
-                                                                               \
-  static inline void HashMap_##_reserve(HashMap_* self, size_t n) {            \
-    CWISS_RawHashSet_reserve(&kPolicy_, &self->set_, n);                       \
-  }                                                                            \
-  static inline void HashMap_##_rehash(HashMap_* self, size_t n) {             \
-    CWISS_RawHashSet_rehash(&kPolicy_, &self->set_, n);                        \
-  }                                                                            \
-                                                                               \
-  static inline bool HashMap_##_empty(const HashMap_* self) {                  \
-    return CWISS_RawHashSet_empty(&kPolicy_, &self->set_);                     \
-  }                                                                            \
-  static inline size_t HashMap_##_size(const HashMap_* self) {                 \
-    return CWISS_RawHashSet_size(&kPolicy_, &self->set_);                      \
-  }                                                                            \
-  static inline size_t HashMap_##_capacity(const HashMap_* self) {             \
-    return CWISS_RawHashSet_capacity(&kPolicy_, &self->set_);                  \
-  }                                                                            \
-                                                                               \
-  static inline void HashMap_##_clear(HashMap_* self) {                        \
-    return CWISS_RawHashSet_clear(&kPolicy_, &self->set_);                     \
-  }                                                                            \
-                                                                               \
-  typedef struct {                                                             \
-    HashMap_##_Iter iter;                                                      \
-    bool inserted;                                                             \
-  } HashMap_##_Insert;                                                         \
-  static inline HashMap_##_Insert HashMap_##_insert(HashMap_* self,            \
-                                                    HashMap_##_Entry* val) {   \
-    CWISS_Insert ret = CWISS_RawHashSet_insert(&kPolicy_, &self->set_, val);   \
-    return (HashMap_##_Insert){{ret.iter}, ret.inserted};                      \
-  }                                                                            \
-                                                                               \
-  static inline HashMap_##_CIter HashMap_##_cfind_hinted(                      \
-      const HashMap_* self, const K_* key, size_t hash) {                      \
-    return (HashMap_##_CIter){                                                 \
-        CWISS_RawHashSet_find_hinted(&kPolicy_, &self->set_, key, hash)};      \
-  }                                                                            \
-  static inline HashMap_##_Iter HashMap_##_find_hinted(                        \
-      HashMap_* self, const K_* key, size_t hash) {                            \
-    return (HashMap_##_Iter){                                                  \
-        CWISS_RawHashSet_find_hinted(&kPolicy_, &self->set_, key, hash)};      \
-  }                                                                            \
-  static inline HashMap_##_CIter HashMap_##_cfind(const HashMap_* self,        \
-                                                  const K_* key) {             \
-    return (HashMap_##_CIter){                                                 \
-        CWISS_RawHashSet_find(&kPolicy_, &self->set_, key)};                   \
-  }                                                                            \
-  static inline HashMap_##_Iter HashMap_##_find(HashMap_* self,                \
-                                                const K_* key) {               \
-    return (HashMap_##_Iter){                                                  \
-        CWISS_RawHashSet_find(&kPolicy_, &self->set_, key)};                   \
-  }                                                                            \
-                                                                               \
-  static inline bool HashMap_##_contains(const HashMap_* self,                 \
-                                         const K_* key) {                      \
-    return CWISS_RawHashSet_contains(&kPolicy_, &self->set_, key);             \
-  }                                                                            \
-                                                                               \
-  static inline void HashMap_##_erase_at(HashMap_##_Iter it) {                 \
-    CWISS_RawHashSet_erase_at(&kPolicy_, it.it_);                              \
-  }                                                                            \
-  static inline void HashMap_##_erase(HashMap_* self, const K_* key) {         \
-    CWISS_RawHashSet_erase(&kPolicy_, &self->set_, key);                       \
-  }                                                                            \
-                                                                               \
-  CWISS_END_                                                                   \
-  /* Force a semicolon. */ struct HashMap_##_NeedsTrailingSemicolon_ { int x; }
 
 #endif  // CWISSTABLE_H_
