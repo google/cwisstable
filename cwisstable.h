@@ -1605,7 +1605,8 @@ CWISS_END_EXTERN_
   CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, HashSet_##_kPolicy)
 
 #define CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, kPolicy_) \
-  CWISS_DECLARE_COMMON_(HashSet_, Type_, Type_, kPolicy_)
+  typedef Type_ HashMap_##_Entry;                             \
+  CWISS_DECLARE_COMMON_(HashSet_, HashMap_##_Entry, HashMap_##_Entry, kPolicy_)
 
 #define CWISS_DECLARE_FLAT_HASHMAP(HashMap_, K_, V_)             \
   CWISS_DECLARE_POD_FLAT_MAP_POLICY(HashMap_##_kPolicy, K_, V_); \
@@ -1620,7 +1621,9 @@ CWISS_END_EXTERN_
     K_ key;                                                    \
     V_ val;                                                    \
   } HashMap_##_Entry;                                          \
-  CWISS_DECLARE_COMMON_(HashMap_, HashMap_##_Entry, K_, kPolicy_)
+  typedef K_ HashMap_##_Key;                                   \
+  typedef V_ HashMap_##_Value;                                 \
+  CWISS_DECLARE_COMMON_(HashMap_, HashMap_##_Entry, HashMap_##_Key, kPolicy_)
 
 #define CWISS_DECLARE_COMMON_(HashSet_, Type_, Key_, kPolicy_)                 \
   CWISS_BEGIN_                                                                 \
