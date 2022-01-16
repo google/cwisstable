@@ -13,8 +13,8 @@
 # limitations under the License.
 
 cc_library(
-    name = "cc_wrappers",
-    hdrs = ["cc_wrappers.h"],
+    name = "wrappers",
+    hdrs = ["wrappers.h"],
     deps = ["//:cwisstable"],
     copts = [
       "-std=c++17",
@@ -27,7 +27,7 @@ cc_test(
     deps = [
         "//:cwisstable",
         "//:cwisstable_debug",
-        ":cc_wrappers",
+        ":wrappers",
 
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:config",
