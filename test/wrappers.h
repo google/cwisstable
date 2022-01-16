@@ -250,29 +250,45 @@ class raw_hash_set {
   using const_pointer = const value_type*;
 
  private:
-  static constexpr CWISS_Policy kPolicy = {
-      .size = sizeof(typename Policy::slot_type),
-      .align = alignof(typename Policy::slot_type),
+  static constexpr CWISS_ObjectPolicy kObjectPolicy = {
+      .size = sizeof(T),
+      .align = alignof(T),
+      .copy =
+          +[](void* dst, const void* src) {
+            new (dst) T(*static_cast<const T*>(src));
+          },
+      .dtor = +[](void* val) { static_cast<T*>(val)->~T(); },
+  };
+
+  static constexpr CWISS_KeyPolicy kKeyPolicy = {
       .hash =
           +[](const void* val) { return Hash{}(*static_cast<const T*>(val)); },
       .eq =
           +[](const void* a, const void* b) {
             return Eq{}(*static_cast<const T*>(a), *static_cast<const T*>(b));
           },
+  };
+  static constexpr CWISS_AllocPolicy kAllocPolicy = {
       .alloc =
           +[](size_t size, size_t align) {
             return ::operator new(size, static_cast<std::align_val_t>(align));
           },
       .free = +[](void* ptr, size_t size,
                   size_t align) { return ::operator delete(ptr); },
-      .copy_value =
-          +[](void* dst, const void* src) {
-            new (dst) T(*static_cast<const T*>(src));
-          },
-      .new_slot = &Policy::new_slot,
-      .del_slot = &Policy::del_slot,
-      .txfer_slot = &Policy::txfer_slot,
+  };
+  static constexpr CWISS_SlotPolicy kSlotPolicy = {
+      .size = sizeof(typename Policy::slot_type),
+      .align = alignof(typename Policy::slot_type),
+      .init = &Policy::new_slot,
+      .del = &Policy::del_slot,
+      .transfer = &Policy::txfer_slot,
       .get = &Policy::get,
+  };
+  static constexpr CWISS_Policy kPolicy = {
+      .obj = &kObjectPolicy,
+      .key = &kKeyPolicy,
+      .alloc = &kAllocPolicy,
+      .slot = &kSlotPolicy,
   };
 
   // Amazingly, you can stick this in class scope and it somehow
