@@ -31,7 +31,7 @@
 #include "cwisstable.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "test/cc_wrappers.h"
+#include "test/wrappers.h"
 //#include "absl/base/internal/cycleclock.h"
 //#include "absl/base/internal/raw_logging.h"
 //#include "absl/container/internal/container_memory.h"
@@ -40,8 +40,8 @@
 //#include "absl/container/internal/hashtable_debug.h"
 #include "absl/strings/string_view.h"
 
-namespace cwisstable {
-
+namespace cwisstable::internal {
+namespace {
 struct RawHashSetTestOnlyAccess {
   template <typename C>
   static auto GetSlots(const C& c) -> decltype(c.slots_) {
@@ -50,10 +50,8 @@ struct RawHashSetTestOnlyAccess {
 };
 
 namespace container_internal {
-using cwisstable::Group;
+using internal::Group;
 }
-
-namespace {
 
 using ::testing::ElementsAre;
 using ::testing::Eq;
@@ -399,15 +397,16 @@ TEST(Group, CountLeadingEmptyOrDeleted) {
 //   using Base::Base;
 // };
 
-size_t HashStdString(const void* p) {
-  const auto* s = static_cast<const std::string*>(p);
+struct HashStdString {
+  size_t operator()(const std::string& s) {
+    CWISS_FxHash_State state = 0;
+    CWISS_FxHash_Write(&state, s.data(), s.size());
+    return state;
+  }
+};
 
-  CWISS_FxHash_State state = 0;
-  CWISS_FxHash_Write(&state, s->data(), s->size());
-  return state;
-}
-
-using StringTable = UnprefixTable<std::string, HashStdString>;
+using StringTable =
+    raw_hash_set<std::string, FlatSetPolicy<std::string>, HashStdString>;
 
 // struct IntTable
 //     : raw_hash_set<IntPolicy, container_internal::hash_default_hash<int64_t>,
@@ -416,7 +415,7 @@ using StringTable = UnprefixTable<std::string, HashStdString>;
 //   using Base::Base;
 // };
 
-using IntTable = UnprefixTable<int64_t>;
+using IntTable = raw_hash_set<int64_t, FlatSetPolicy<int64_t>>;
 
 // struct Uint8Table
 //     : raw_hash_set<Uint8Policy,
@@ -426,7 +425,7 @@ using IntTable = UnprefixTable<int64_t>;
 //   using Base::Base;
 // };
 
-using Uint8Table = UnprefixTable<uint8_t>;
+using Uint8Table = raw_hash_set<uint8_t, FlatSetPolicy<uint8_t>>;
 
 // template <typename T>
 // struct CustomAlloc : std::allocator<T> {
@@ -454,7 +453,9 @@ using Uint8Table = UnprefixTable<uint8_t>;
 //   }
 // };
 
-size_t BadFastHash(const void*) { return 0; }
+struct BadFastHash {
+  size_t operator()(const int&) { return 0; }
+};
 
 // struct BadTable : raw_hash_set<IntPolicy, BadFastHash, std::equal_to<int>,
 //                                std::allocator<int>> {
@@ -463,7 +464,7 @@ size_t BadFastHash(const void*) { return 0; }
 //   using Base::Base;
 // };
 
-using BadTable = UnprefixTable<int, BadFastHash>;
+using BadTable = raw_hash_set<int, FlatSetPolicy<int>, BadFastHash>;
 
 // TEST(Table, EmptyFunctorOptimization) {
 //   static_assert(std::is_empty<std::equal_to<absl::string_view>>::value, "");
@@ -903,15 +904,16 @@ size_t MaxDensitySize(size_t n) {
 //   size_t operator()(int x) const { return x % 1000; }
 // };
 
-size_t Modulo1000Hash(const void* p) {
-  return *static_cast<const int*>(p) % 1000;
-}
+struct Modulo1000Hash {
+  size_t operator()(const int& p) { return p % 1000; }
+};
 
 // struct Modulo1000HashTable
 //     : public raw_hash_set<IntPolicy, Modulo1000Hash, std::equal_to<int>,
 //                           std::allocator<int>> {};
 
-using Modulo1000HashTable = UnprefixTable<int, Modulo1000Hash>;
+using Modulo1000HashTable =
+    raw_hash_set<int, FlatSetPolicy<int>, Modulo1000Hash>;
 
 // Test that rehash with no resize happen in case of many deleted slots.
 TEST(Table, RehashWithNoResize) {
@@ -2225,4 +2227,4 @@ TEST(Table, AlignOne) {
 }
 
 }  // namespace
-}  // namespace cwisstable
+}  // namespace cwisstable::internal
