@@ -142,6 +142,7 @@ struct ctrl_t {
   CWISS_BIND_CONST(kEmpty);
   CWISS_BIND_CONST(kSentinel);
 
+  ctrl_t() : val_(0) {}
   ctrl_t(CWISS_ctrl_t val) : val_(val) {}
   operator CWISS_ctrl_t() { return val_; }
   CWISS_ctrl_t val_;
@@ -157,6 +158,7 @@ CWISS_BIND_STRUCT(Group) {
   // This is actually fine because CWISS_ctrl_t is going to be a character type
   // on ~every platform.
   Group(const ctrl_t* p) : Group(reinterpret_cast<const CWISS_ctrl_t*>(p)) {}
+  Group(ctrl_t * p) : Group(reinterpret_cast<const CWISS_ctrl_t*>(p)) {}
 
   CWISS_BIND_CTOR(Group);
   CWISS_BIND_MEMBER_CONST(Group, kWidth);
@@ -184,6 +186,10 @@ CWISS_BIND_STRUCT(Group) {
 };
 CWISS_BIND_FUNC(EmptyGroup);
 
+void ConvertDeletedToEmptyAndFullToDeleted(ctrl_t* p, size_t n) {
+  CWISS_ConvertDeletedToEmptyAndFullToDeleted(
+      reinterpret_cast<CWISS_ctrl_t*>(p), n);
+}
 CWISS_BIND_FUNC(ConvertDeletedToEmptyAndFullToDeleted);
 CWISS_BIND_FUNC(IsFull);
 
@@ -207,14 +213,14 @@ struct FlatSetPolicy {
   using key_type = T;
   using value_type = T;
 
-  static void new_slot(void* slot) {}
-  static void del_slot(void* slot) {}
-  static void txfer_slot(void* dst, void* src) {
+  static inline void new_slot(void* slot) {}
+  static inline void del_slot(void* slot) {}
+  static inline void txfer_slot(void* dst, void* src) {
     T* old = static_cast<T*>(src);
     new (dst) T(std::move(*old));
     old->~T();
   }
-  static void* get(void* slot) { return slot; }
+  static inline void* get(void* slot) { return slot; }
 };
 
 template <class InputIter>
@@ -391,6 +397,7 @@ class raw_hash_set {
   raw_hash_set& operator=(const raw_hash_set& that) {
     Inner_destroy(i());
     inner_ = Inner_dup(&that.inner_);
+    return *this;
   }
 
   raw_hash_set(raw_hash_set&& that) : inner_(that.inner_) {
@@ -400,6 +407,7 @@ class raw_hash_set {
     Inner_destroy(i());
     inner_ = that.inner_;
     that.inner_ = Inner_new(0);
+    return *this;
   }
 
   ~raw_hash_set() { Inner_destroy(i()); }

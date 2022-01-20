@@ -40,3 +40,23 @@ cc_test(
       #"-DSWISS_HAVE_SSE2=0",
     ],
 )
+
+cc_binary(
+    name = "raw_hash_set_benchmark",
+    testonly = 1,
+    srcs = ["absl_raw_hash_set_benchmark.cc"],
+    tags = ["benchmark"],
+    visibility = ["//visibility:private"],
+    deps = [
+        "//:cwisstable",
+        "//:cwisstable_debug",
+        ":wrappers",
+        
+        "@com_google_absl//absl/strings:str_format",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+    copts = [
+      "-std=c++17",
+      #"-DSWISS_HAVE_SSE2=0",
+    ],
+)

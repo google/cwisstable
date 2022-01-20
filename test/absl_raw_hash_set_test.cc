@@ -14,6 +14,11 @@
 
 // absl::raw_hash_set's tests modified to run over cwisstable.
 
+// clang-format off
+#include "cwisstable.h"
+#include "test/wrappers.h"
+// clang-format on
+
 #include <atomic>
 #include <cmath>
 #include <cstdint>
@@ -28,10 +33,8 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/config.h"
-#include "cwisstable.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "test/wrappers.h"
 //#include "absl/base/internal/cycleclock.h"
 //#include "absl/base/internal/raw_logging.h"
 //#include "absl/container/internal/container_memory.h"
