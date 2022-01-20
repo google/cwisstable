@@ -1430,7 +1430,7 @@ static inline CWISS_RawHashSet CWISS_RawHashSet_dup(
   CWISS_RawHashSet_reserve(policy, &self, that->size_);
   // Because the table is guaranteed to be empty, we can do something faster
   // than a full `insert`.
-  CWISS_RawIter iter = CWISS_RawHashSet_iter(policy, &self);
+  CWISS_RawIter iter = CWISS_RawHashSet_citer(policy, that);
   void* v;
   while ((v = CWISS_RawIter_next(policy, &iter))) {
     size_t hash = policy->key->hash(v);
