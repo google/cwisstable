@@ -196,8 +196,8 @@ CWISS_BIND_FUNC(IsFull);
 template <typename T>
 struct DefaultHash {
   size_t operator()(const T& val) {
-    CWISS_FxHash_State state = 0;
-    CWISS_FxHash_Write(&state, &val, sizeof(T));
+    CWISS_AbslHash_State state = CWISS_AbslHash_kInit;
+    CWISS_AbslHash_Write(&state, &val, sizeof(T));
     return state;
   }
 };

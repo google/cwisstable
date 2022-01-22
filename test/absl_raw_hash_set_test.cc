@@ -402,8 +402,8 @@ TEST(Group, CountLeadingEmptyOrDeleted) {
 
 struct HashStdString {
   size_t operator()(const std::string& s) {
-    CWISS_FxHash_State state = 0;
-    CWISS_FxHash_Write(&state, s.data(), s.size());
+    CWISS_AbslHash_State state = CWISS_AbslHash_kInit;
+    CWISS_AbslHash_Write(&state, s.data(), s.size());
     return state;
   }
 };

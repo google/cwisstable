@@ -54,8 +54,8 @@ static const CWISS_ObjectPolicy kCStrObjPolicy = {
 static inline size_t kCStrPolicy_hash(const void* val) {
   const char* str = *(const char**)val;
   size_t len = strlen(str);
-  CWISS_FxHash_State state = CWISS_FxHash_kInit;
-  CWISS_FxHash_Write(&state, str, len);
+  CWISS_AbslHash_State state = CWISS_AbslHash_kInit;
+  CWISS_AbslHash_Write(&state, str, len);
   return state;
 }
 static inline bool kCStrPolicy_eq(const void* a, const void* b) {

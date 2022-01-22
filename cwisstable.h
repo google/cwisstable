@@ -107,6 +107,62 @@
    (sizeof(unsigned long long) - sizeof(x)) * 8)
 
 #define CWISS_BitWidth(x) (((uint32_t)(sizeof(x) * 8)) - CWISS_LeadingZeros(x))
+#define CWISS_RotateLeft(x, bits) \
+  (((x) << bits) | ((x) >> (sizeof(x) * 8 - bits)))
+
+typedef struct {
+  uint64_t lo, hi;
+} CWISS_U128;
+
+// Computes a wide multiplication operation.
+//
+// TODO: Don't use intrinsics... 32-bit support?
+static inline CWISS_U128 CWISS_Mul128(uint64_t a, uint64_t b) {
+  __uint128_t p = a;
+  p *= b;
+  return (CWISS_U128){(uint64_t)p, (uint64_t)(p >> 64)};
+}
+
+// Unaligned load operations.
+static inline uint32_t CWISS_Load32(const void* p) {
+  uint32_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+static inline uint64_t CWISS_Load64(const void* p) {
+  uint64_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+
+// Reads 9 to 16 bytes from p.
+// The least significant 8 bytes are in .first, the rest (zero padded) bytes
+// are in .second.
+static inline CWISS_U128 CWISS_Load9To16(const void* p, size_t len) {
+  const unsigned char* p8 = (const unsigned char*)p;
+  uint64_t lo = CWISS_Load64(p8);
+  uint64_t hi = CWISS_Load64(p8 + len - 8);
+  return (CWISS_U128){lo, hi >> (128 - len * 8)};
+}
+
+// Reads 4 to 8 bytes from p. Zero pads to fill uint64_t.
+static inline uint64_t CWISS_Load4To8(const void* p, size_t len) {
+  const unsigned char* p8 = (const unsigned char*)p;
+  uint64_t lo = CWISS_Load32(p8);
+  uint64_t hi = CWISS_Load32(p8 + len - 4);
+  return lo | (hi << (len - 4) * 8);
+}
+
+// Reads 1 to 3 bytes from p. Zero pads to fill uint32_t.
+static inline uint32_t CWISS_Load1To3(const void* p, size_t len) {
+  const unsigned char* p8 = (const unsigned char*)p;
+  uint32_t mem0 = p8[0];
+  uint32_t mem1 = p8[len / 2];
+  uint32_t mem2 = p8[len - 1];
+  return (mem0 | (mem1 << (len / 2 * 8)) | (mem2 << ((len - 1) * 8)));
+}
+
+#define CWISS_ReadUnaligned(out, ptr) memcpy(&out, ptr, sizeof(out))
 
 // Branch hot/cold annotations.
 //
@@ -125,13 +181,14 @@
   _Pragma("GCC diagnostic push") \
       _Pragma("GCC diagnostic ignored \"-Wunused-function\"")
 #define CWISS_END_ _Pragma("GCC diagnostic pop")
-/// Utility macros /////////////////////////////////////////////////////////////
+/// Utility macros
+/// /////////////////////////////////////////////////////////////
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN_ CWISS_BEGIN_EXTERN_
 
-/// CWISS_BitMask //////////////////////////////////////////////////////////////
-typedef struct {
+    /// CWISS_BitMask
+    /// //////////////////////////////////////////////////////////////
+    typedef struct {
   uint64_t mask;
   uint32_t width, shift;
 } CWISS_BitMask;
@@ -662,7 +719,7 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
     size_t to_read = len >= sizeof(state_) ? sizeof(state_) : len;
     memcpy(&word, p, to_read);
 
-    state_ = (state_ << kRotate) | (state_ >> (sizeof(state_) * 8 - kRotate));
+    state_ = CWISS_RotateLeft(state_, kRotate);
     state_ ^= word;
     state_ *= kSeed;
 
@@ -671,6 +728,176 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
   }
   *state = state_;
 }
+
+static inline uint64_t CWISS_AbslHash_LowLevelMix(uint64_t v0, uint64_t v1) {
+#if !defined(__aarch64__)
+  // The default bit-mixer uses 64x64->128-bit multiplication.
+  CWISS_U128 p = CWISS_Mul128(v0, v1);
+  return p.hi ^ p.lo;
+#else
+  // The default bit-mixer above would perform poorly on some ARM microarchs,
+  // where calculating a 128-bit product requires a sequence of two
+  // instructions with a high combined latency and poor throughput.
+  // Instead, we mix bits using only 64-bit arithmetic, which is faster.
+  uint64_t p = v0 ^ CWISS_RotateLeft(v1, 40);
+  p *= v1 ^ CWISS_RotateLeft(v0, 39);
+  return p ^ (p >> 11);
+#endif
+}
+
+CWISS_NOINLINE
+static uint64_t CWISS_AbslHash_LowLevelHash(const void* data, size_t len,
+                                            uint64_t seed,
+                                            const uint64_t salt[5]) {
+  const char* ptr = (const char*)data;
+  uint64_t starting_length = (uint64_t)len;
+  uint64_t current_state = seed ^ salt[0];
+
+  if (len > 64) {
+    // If we have more than 64 bytes, we're going to handle chunks of 64
+    // bytes at a time. We're going to build up two separate hash states
+    // which we will then hash together.
+    uint64_t duplicated_state = current_state;
+
+    do {
+      uint64_t chunk[8];
+      memcpy(chunk, ptr, sizeof(chunk));
+
+      uint64_t cs0 = CWISS_AbslHash_LowLevelMix(chunk[0] ^ salt[1],
+                                                chunk[1] ^ current_state);
+      uint64_t cs1 = CWISS_AbslHash_LowLevelMix(chunk[2] ^ salt[2],
+                                                chunk[3] ^ current_state);
+      current_state = (cs0 ^ cs1);
+
+      uint64_t ds0 = CWISS_AbslHash_LowLevelMix(chunk[4] ^ salt[3],
+                                                chunk[5] ^ duplicated_state);
+      uint64_t ds1 = CWISS_AbslHash_LowLevelMix(chunk[6] ^ salt[4],
+                                                chunk[7] ^ duplicated_state);
+      duplicated_state = (ds0 ^ ds1);
+
+      ptr += 64;
+      len -= 64;
+    } while (len > 64);
+
+    current_state = current_state ^ duplicated_state;
+  }
+
+  // We now have a data `ptr` with at most 64 bytes and the current state
+  // of the hashing state machine stored in current_state.
+  while (len > 16) {
+    uint64_t a = CWISS_Load64(ptr);
+    uint64_t b = CWISS_Load64(ptr + 8);
+
+    current_state = CWISS_AbslHash_LowLevelMix(a ^ salt[1], b ^ current_state);
+
+    ptr += 16;
+    len -= 16;
+  }
+
+  // We now have a data `ptr` with at most 16 bytes.
+  uint64_t a = 0;
+  uint64_t b = 0;
+  if (len > 8) {
+    // When we have at least 9 and at most 16 bytes, set A to the first 64
+    // bits of the input and B to the last 64 bits of the input. Yes, they will
+    // overlap in the middle if we are working with less than the full 16
+    // bytes.
+    a = CWISS_Load64(ptr);
+    b = CWISS_Load64(ptr + len - 8);
+  } else if (len > 3) {
+    // If we have at least 4 and at most 8 bytes, set A to the first 32
+    // bits and B to the last 32 bits.
+    a = CWISS_Load32(ptr);
+    b = CWISS_Load32(ptr + len - 4);
+  } else if (len > 0) {
+    // If we have at least 1 and at most 3 bytes, read all of the provided
+    // bits into A, with some adjustments.
+    a = CWISS_Load1To3(ptr, len);
+  }
+
+  uint64_t w = CWISS_AbslHash_LowLevelMix(a ^ salt[1], b ^ current_state);
+  uint64_t z = salt[1] ^ starting_length;
+  return CWISS_AbslHash_LowLevelMix(w, z);
+}
+
+// A non-deterministic seed.
+//
+// The current purpose of this seed is to generate non-deterministic results
+// and prevent having users depend on the particular hash values.
+// It is not meant as a security feature right now, but it leaves the door
+// open to upgrade it to a true per-process random seed. A true random seed
+// costs more and we don't need to pay for that right now.
+//
+// On platforms with ASLR, we take advantage of it to make a per-process
+// random value.
+// See https://en.wikipedia.org/wiki/Address_space_layout_randomization
+//
+// On other platforms this is still going to be non-deterministic but most
+// probably per-build and not per-process.
+static const void* const CWISS_AbslHash_kSeed = &CWISS_AbslHash_kSeed;
+
+// The salt array used by LowLevelHash. This array is NOT the mechanism used to
+// make absl::Hash non-deterministic between program invocations.  See `Seed()`
+// for that mechanism.
+//
+// Any random values are fine. These values are just digits from the decimal
+// part of pi.
+// https://en.wikipedia.org/wiki/Nothing-up-my-sleeve_number
+static const uint64_t CWISS_AbslHash_kHashSalt[5] = {
+    0x243F6A8885A308D3, 0x13198A2E03707344, 0xA4093822299F31D0,
+    0x082EFA98EC4E6C89, 0x452821E638D01377,
+};
+
+#define CWISS_AbslHash_kPiecewiseChunkSize ((size_t)1024)
+
+typedef uint64_t CWISS_AbslHash_State;
+#define CWISS_AbslHash_kInit ((CWISS_AbslHash_State)CWISS_AbslHash_kSeed)
+
+static inline void CWISS_AbslHash_Mix(CWISS_AbslHash_State* state, uint64_t v) {
+  const uint64_t kMul = sizeof(size_t) == 4 ? 0xcc9e2d51 : 0x9ddfea08eb382d69;
+  *state = CWISS_AbslHash_LowLevelMix(*state + v, kMul);
+}
+
+CWISS_NOINLINE
+static uint64_t CWISS_AbslHash_Hash64(const void* val, size_t len) {
+  return CWISS_AbslHash_LowLevelHash(val, len, CWISS_AbslHash_kInit,
+                                     CWISS_AbslHash_kHashSalt);
+}
+
+static inline void CWISS_AbslHash_Write(CWISS_AbslHash_State* state,
+                                        const void* val, size_t len) {
+  const char* val8 = (const char*)val;
+  if (CWISS_LIKELY(len < CWISS_AbslHash_kPiecewiseChunkSize)) {
+    goto CWISS_AbslHash_Write_small;
+  }
+
+  while (len >= CWISS_AbslHash_kPiecewiseChunkSize) {
+    CWISS_AbslHash_Mix(
+        state, CWISS_AbslHash_Hash64(val8, CWISS_AbslHash_kPiecewiseChunkSize));
+    len -= CWISS_AbslHash_kPiecewiseChunkSize;
+    val8 += CWISS_AbslHash_kPiecewiseChunkSize;
+  }
+
+CWISS_AbslHash_Write_small:;
+  uint64_t v;
+  if (len > 16) {
+    v = CWISS_AbslHash_Hash64(val8, len);
+  } else if (len > 8) {
+    CWISS_U128 p = CWISS_Load9To16(val8, len);
+    CWISS_AbslHash_Mix(state, p.lo);
+    v = p.hi;
+  } else if (len >= 4) {
+    v = CWISS_Load4To8(val8, len);
+  } else if (len > 0) {
+    v = CWISS_Load1To3(val8, len);
+  } else {
+    // Empty ranges have no effect.
+    return;
+  }
+
+  CWISS_AbslHash_Mix(state, v);
+}
+
 /// Hash functions /////////////////////////////////////////////////////////////
 
 /// Policies ///////////////////////////////////////////////////////////////////
@@ -726,8 +953,8 @@ typedef struct {
 
 #define CWISS_DECLARE_POD_MAP_KEY(kPolicy_, Type_, K_)             \
   static inline size_t kPolicy_##_hash(const void* val) {          \
-    CWISS_FxHash_State state = CWISS_FxHash_kInit;                                  \
-    CWISS_FxHash_Write(&state, val, sizeof(K_));                   \
+    CWISS_AbslHash_State state = CWISS_AbslHash_kInit;             \
+    CWISS_AbslHash_Write(&state, val, sizeof(K_));                 \
     return state;                                                  \
   }                                                                \
   static inline bool kPolicy_##_eq(const void* a, const void* b) { \
