@@ -647,8 +647,9 @@ static inline void CWISS_free(void* array, size_t size, size_t align) {
 }
 /// Allocation formulae ////////////////////////////////////////////////////////
 
-/// Policies ///////////////////////////////////////////////////////////////////
+/// Hash functions /////////////////////////////////////////////////////////////
 typedef size_t CWISS_FxHash_State;
+#define CWISS_FxHash_kInit ((CWISS_FxHash_State)0);
 static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
                                       const void* val, size_t len) {
   const size_t kSeed = (size_t)(UINT64_C(0x517cc1b727220a95));
@@ -670,7 +671,9 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
   }
   *state = state_;
 }
+/// Hash functions /////////////////////////////////////////////////////////////
 
+/// Policies ///////////////////////////////////////////////////////////////////
 typedef struct {
   // The size and alignment of the stored object.
   size_t size, align;
@@ -723,7 +726,7 @@ typedef struct {
 
 #define CWISS_DECLARE_POD_MAP_KEY(kPolicy_, Type_, K_)             \
   static inline size_t kPolicy_##_hash(const void* val) {          \
-    CWISS_FxHash_State state = 0;                                  \
+    CWISS_FxHash_State state = CWISS_FxHash_kInit;                                  \
     CWISS_FxHash_Write(&state, val, sizeof(K_));                   \
     return state;                                                  \
   }                                                                \
