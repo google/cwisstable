@@ -32,7 +32,7 @@
 
 #include "cwisstable.h"
 
-namespace cwisstable {
+namespace cwisstable::internal {
 // Returns the number of probes required to lookup `key`.  Returns 0 for a
 // search with no collisions.  Higher values mean more hash collisions occurred;
 // however, the exact meaning of this number varies according to the container

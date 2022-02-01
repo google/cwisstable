@@ -58,16 +58,9 @@ cc_library(
 )
 
 cc_library(
-    name = "cwisstable_debug",
-    hdrs = ["cwisstable_debug.h"],
-    srcs = ["cwisstable_debug.cc"],
+    name = "debug",
+    hdrs = ["cwisstable/internal/debug.h"],
+    srcs = ["cwisstable/internal/debug.cc"],
     deps = [":unified"],
     visibility = ["//:__subpackages__"],
-)
-
-cc_binary(
-    name = "example",
-    srcs = ["example.c"],
-    deps = [":unified"],
-    copts = ["--std=c11"],
 )
