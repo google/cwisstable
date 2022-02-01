@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "cwisstable.h"
-#include "cwisstable_debug.h"
+#include "cwisstable/internal/debug.h"
 
 namespace cwisstable::internal {
 

@@ -26,7 +26,7 @@ cc_test(
     srcs = ["absl_raw_hash_set_test.cc"],
     deps = [
         "//:unified",
-        "//:cwisstable_debug",
+        "//:debug",
         ":wrappers",
 
         "@com_google_absl//absl/base",
@@ -49,7 +49,7 @@ cc_binary(
     visibility = ["//visibility:private"],
     deps = [
         "//:unified",
-        "//:cwisstable_debug",
+        "//:debug",
         ":wrappers",
         
         "@com_google_absl//absl/strings:str_format",
