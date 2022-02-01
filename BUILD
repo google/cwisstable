@@ -12,23 +12,62 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+filegroup(
+    name = "public_headers",
+    srcs = [
+        "cwisstable/declare.h",
+        "cwisstable/policy.h",
+    ],
+)
+
+filegroup(
+    name = "private_headers",
+    srcs = [
+        "cwisstable/base.h",
+        "cwisstable/bits.h",
+        "cwisstable/capacity.h",
+        "cwisstable/ctrl.h",
+        "cwisstable/probe.h",
+        "cwisstable/raw_hash_set.h",
+    ],
+)
+
 cc_library(
-    name = "cwisstable",
-    hdrs = ["cwisstable.h"],
-    visibility = ["//visibility:public"],
+  name = "split",
+  hdrs = [":public_headers"],
+  srcs = [":private_headers"],
+  visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "generate_unified",
+    srcs = [
+        ":public_headers",
+        ":private_headers",
+    ],
+    outs = ["cwisstable.h"],
+    cmd = './$(location unify.py) --out "$@" $(SRCS)',
+    tools = ["unify.py"],
+    message = "Generating unified cwisstable.h",
+)
+
+cc_library(
+  name = "unified",
+  hdrs = ["cwisstable.h"],
+  visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "cwisstable_debug",
     hdrs = ["cwisstable_debug.h"],
     srcs = ["cwisstable_debug.cc"],
-    deps = [":cwisstable"],
+    deps = [":unified"],
     visibility = ["//:__subpackages__"],
 )
 
 cc_binary(
     name = "example",
     srcs = ["example.c"],
-    deps = [":cwisstable"],
+    deps = [":unified"],
     copts = ["--std=c11"],
 )

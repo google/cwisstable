@@ -15,7 +15,7 @@
 cc_library(
     name = "wrappers",
     hdrs = ["wrappers.h"],
-    deps = ["//:cwisstable"],
+    deps = ["//:unified"],
     copts = [
       "-std=c++17",
     ],
@@ -25,7 +25,7 @@ cc_test(
     name = "raw_hash_set_test",
     srcs = ["absl_raw_hash_set_test.cc"],
     deps = [
-        "//:cwisstable",
+        "//:unified",
         "//:cwisstable_debug",
         ":wrappers",
 
@@ -48,7 +48,7 @@ cc_binary(
     tags = ["benchmark"],
     visibility = ["//visibility:private"],
     deps = [
-        "//:cwisstable",
+        "//:unified",
         "//:cwisstable_debug",
         ":wrappers",
         
