@@ -22,10 +22,11 @@ import sys
 
 from pathlib import Path
 
+
 class Header:
-  def __init__(self, path):
-    self.path = path
-    self.fulltext = path.read_text()
+  def __init__(self, include_path, open_path):
+    self.path = include_path
+    self.fulltext = open_path.read_text()
 
     lines = []
     self.includes = []
@@ -37,11 +38,11 @@ class Header:
         continue
       has_seen_licence = True
 
-      if ifdef_guard == None and line.startswith('#ifndef'):
+      if ifdef_guard is None and line.startswith('#ifndef'):
         ifdef_guard = line[len('#ifndef'):].strip()
-      elif ifdef_guard != None and \
-        (line == f'#define {ifdef_guard}' or \
-          line == f'#endif  // {ifdef_guard}'):
+      elif (ifdef_guard is not None and
+            (line == f'#define {ifdef_guard}' or
+             line == f'#endif  // {ifdef_guard}')):
         pass
       elif line.startswith('#include'):
         self.includes.append(line[len('#include'):].strip())
@@ -66,6 +67,12 @@ def main():
     help='location to output the file to'
   )
   parser.add_argument(
+    '--includes_relative_to',
+    type=Path,
+    default='.',
+    help='directory path that "cwisstable/*.h" includes are relative to'
+  )
+  parser.add_argument(
     'hdrs',
     type=Path,
     nargs='+',
@@ -74,42 +81,51 @@ def main():
   args = parser.parse_args()
 
   hdrs = {}
-  for hdr in args.hdrs:
-    hdrs[hdr] = Header(hdr)
+  include_dir = args.includes_relative_to.resolve()
+  for hdr_open_path in args.hdrs:
+    hdr_include_path = (Path.cwd() / hdr_open_path).relative_to(include_dir)
+    hdrs[hdr_include_path] = Header(hdr_include_path, hdr_open_path)
 
   hdr_names = {f'"{name}"' for name, _ in hdrs.items()}
   external_includes = set()
   internal_includes = set()
-  for _, hdr in hdrs.items():
+  for hdr in hdrs.values():
     for inc in hdr.includes:
       if inc in hdr_names:
         internal_includes.add(inc.strip('"'))
       else:
         external_includes.add(inc)
 
-  roots = [hdr for _, hdr in hdrs.items() if str(hdr.path) not in internal_includes]
-  roots.sort()  # This script must be idempotent.
+  roots = [hdr for hdr in hdrs.values() if
+           str(hdr.path) not in internal_includes]
+  # Order the roots predictably; this script must be idempotent
+  roots.sort(key=lambda h: h.path)
 
   if not roots:
     print("dependency cycle detected")
     return 1
-  
+
   # Toposort the include dependencies.
   unsorted = dict(hdrs)
-  sorted = []
+  sorted_hdrs = []
   while roots:
-    hdr, roots = roots[0], roots[1:]
-    sorted.append(hdr)
+    hdr = roots.pop()
+    sorted_hdrs.append(hdr)
     del unsorted[hdr.path]
 
+    new_roots = []
     for inc in hdr.includes:
       if inc not in hdr_names:
         continue
 
-      for _, hdr in unsorted.items():
-        if inc in hdr.includes: break
+      for other_hdr in unsorted.values():
+        if inc in other_hdr.includes:
+          break
       else:
-        roots.append(hdrs[Path(inc.strip('"'))])
+        new_roots.append(hdrs[Path(inc.strip('"'))])
+    new_roots.sort(key=lambda h: h.path)
+    roots.extend(new_roots)
+  sorted_hdrs.reverse()
 
   o = args.out
 
@@ -120,9 +136,9 @@ def main():
     o.write(line.replace('#', '//') + "\n")
   o.write("\n")
 
-  o.write("// THIS IS A GENERATE FILE! DO NOT EDIT DIRECTLY!\n")
-  o.write("// Generated using glob.py, by concatenating, in order:\n")
-  for hdr in sorted[::-1]:
+  o.write("// THIS IS A GENERATED FILE! DO NOT EDIT DIRECTLY!\n")
+  o.write("// Generated using unify.py, by concatenating, in order:\n")
+  for hdr in sorted_hdrs:
     o.write(f'// #include "{hdr.path}"\n')
   o.write("\n")
 
@@ -132,19 +148,18 @@ def main():
   o.write("\n")
 
   # Add the external includes.
-  external_includes = list(external_includes)
-  external_includes.sort()
-  for inc in external_includes:
+  for inc in sorted(external_includes):
     o.write(f"#include {inc}\n")
   o.write("\n")
 
   # Add each header.
-  for hdr in sorted[::-1]:
+  for hdr in sorted_hdrs:
     name = f"/// {hdr.path} /"
     name += '/' * (80 - len(name))
     o.write('\n'.join([name, hdr.text, name]) + "\n\n")
 
   # Add the include guard tail.
   o.write(f"#endif  // {args.guard}\n")
+
 
 if __name__ == '__main__': sys.exit(main() or 0)

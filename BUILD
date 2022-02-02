@@ -46,7 +46,7 @@ genrule(
         ":private_headers",
     ],
     outs = ["cwisstable.h"],
-    cmd = './$(location unify.py) --out "$@" $(SRCS)',
+    cmd = './$(location unify.py) --out "$@" --includes_relative_to=$$(dirname $(location unify.py)) $(SRCS)',
     tools = ["unify.py"],
     message = "Generating unified cwisstable.h",
 )
