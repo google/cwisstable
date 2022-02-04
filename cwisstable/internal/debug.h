@@ -64,5 +64,5 @@ struct HashtableDebugProbeSummary {
 // container.
 HashtableDebugProbeSummary GetHashtableDebugProbeSummary(
     const CWISS_Policy* policy, const CWISS_RawHashSet* set);
-}  // namespace cwisstable
+}  // namespace cwisstable::internal
 #endif  // CWISSTABLE_DEBUG_H_
