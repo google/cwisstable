@@ -27,14 +27,26 @@
 CWISS_BEGIN_
 CWISS_BEGIN_EXTERN_
 
-// "Control group" types and functions.
-//
-// Control bytes are bytes (collected into groups of a platform-specific size)
-// that define the state of the corresponding slot in the slot array. Group
-// manipulation is tightly optimized to be as efficient as possible.
+/// Control bytes and groups: the core of SwissTable optimization.
+///
+/// Control bytes are bytes (collected into groups of a platform-specific size)
+/// that define the state of the corresponding slot in the slot array. Group
+/// manipulation is tightly optimized to be as efficient as possible.
 
-// The values here are selected for maximum performance. See the static
-// CWISS_DCHECKs below for details.
+/// A `CWISS_ctrl_t` is a single control byte, which can have one of four
+/// states: empty, deleted, full (which has an associated seven-bit hash) and
+/// the sentinel. They have the following bit patterns:
+///
+/// ```
+///    empty: 1 0 0 0 0 0 0 0
+///  deleted: 1 1 1 1 1 1 1 0
+///     full: 0 h h h h h h h  // h represents the hash bits.
+/// sentinel: 1 1 1 1 1 1 1 1
+/// ```
+///
+/// These values are specifically tuned for SSE-flavored SIMD; future ports to
+/// other SIMD platforms may require choosing new values. The static_asserts
+/// below detail the source of these choices.
 typedef int8_t CWISS_ctrl_t;
 #define CWISS_kEmpty (INT8_C(-128))
 #define CWISS_kDeleted (INT8_C(-2))
@@ -65,21 +77,26 @@ static_assert(CWISS_kDeleted == -2,
               "CWISS_kDeleted must be -2 to make the implementation of "
               "ConvertSpecialToEmptyAndFullToDeleted efficient");
 
-// A single block of empty control bytes for tables without any slots allocated.
-// This enables removing a branch in the hot path of find().
-alignas(16) static const CWISS_ctrl_t CWISS_kEmptyGroup[16] = {
-    CWISS_kSentinel, CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
-    CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
-    CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
-    CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty};
+/// Returns a pointer to a control byte group that can be used by empty tables.
 static inline CWISS_ctrl_t* CWISS_EmptyGroup() {
-  return (CWISS_ctrl_t*)&CWISS_kEmptyGroup;
+  // A single block of empty control bytes for tables without any slots
+  // allocated. This enables removing a branch in the hot path of find().
+  alignas(16) static const CWISS_ctrl_t kEmptyGroup[16] = {
+      CWISS_kSentinel, CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
+      CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
+      CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
+      CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
+  };
+
+  // Const must be cast away here; no uses of this function will actually write
+  // to it, because it is only used for empty tables.
+  return (CWISS_ctrl_t*)&kEmptyGroup;
 }
 
-// Returns a hash seed.
-//
-// The seed consists of the ctrl_ pointer, which adds enough entropy to ensure
-// non-determinism of iteration order in most cases.
+/// Returns a hash seed.
+///
+/// The seed consists of the ctrl_ pointer, which adds enough entropy to ensure
+/// non-determinism of iteration order in most cases.
 static inline size_t CWISS_HashSeed(const CWISS_ctrl_t* ctrl) {
   // The low bits of the pointer have little or no entropy because of
   // alignment. We shift the pointer to try to use higher entropy bits. A
@@ -87,39 +104,81 @@ static inline size_t CWISS_HashSeed(const CWISS_ctrl_t* ctrl) {
   return ((uintptr_t)ctrl) >> 12;
 }
 
+/// Extracts the H1 portion of a hash: the high 57 bits mixed with a per-table
+/// salt.
 static inline size_t CWISS_H1(size_t hash, const CWISS_ctrl_t* ctrl) {
   return (hash >> 7) ^ CWISS_HashSeed(ctrl);
 }
 
+/// Extracts the H2 portion of a hash: the low 7 bits, which can be used as
+/// control byte.
 typedef uint8_t CWISS_h2_t;
 static inline CWISS_h2_t CWISS_H2(size_t hash) { return hash & 0x7F; }
 
+/// Returns whether `c` is empty.
 static inline bool CWISS_IsEmpty(CWISS_ctrl_t c) { return c == CWISS_kEmpty; }
+
+/// Returns whether `c` is full.
 static inline bool CWISS_IsFull(CWISS_ctrl_t c) { return c >= 0; }
+
+/// Returns whether `c` is deleted.
 static inline bool CWISS_IsDeleted(CWISS_ctrl_t c) {
   return c == CWISS_kDeleted;
 }
+
+/// Returns whether `c` is empty or deleted.
 static inline bool CWISS_IsEmptyOrDeleted(CWISS_ctrl_t c) {
   return c < CWISS_kSentinel;
 }
 
+/// Asserts that `ctrl` points to a full control byte.
 #define CWISS_AssertIsFull(ctrl)                                               \
   CWISS_CHECK((ctrl) != NULL && CWISS_IsFull(*(ctrl)),                         \
               "Invalid operation on iterator (%p/%d). The element might have " \
               "been erased, or the table might have rehashed.",                \
               (ctrl), (ctrl) ? *(ctrl) : -1)
 
+/// Asserts that `ctrl` is either null OR points to a full control byte.
 #define CWISS_AssertIsValid(ctrl)                                              \
   CWISS_CHECK((ctrl) == NULL || CWISS_IsFull(*(ctrl)),                         \
               "Invalid operation on iterator (%p/%d). The element might have " \
               "been erased, or the table might have rehashed.",                \
               (ctrl), (ctrl) ? *(ctrl) : -1)
 
+/// Constructs a `BitMask` with the correct parameters for whichever
+/// implementation of `CWISS_Group` is in use.
 #define CWISS_Group_BitMask(x) \
   (CWISS_BitMask){(uint64_t)(x), CWISS_Group_kWidth, CWISS_Group_kShift};
 
 // TODO(#4): Port this to NEON.
 #if CWISS_HAVE_SSE2
+// Reference guide for intrinsics used below:
+//
+// * __m128i: An XMM (128-bit) word.
+//
+// * _mm_setzero_si128: Returns a zero vector.
+// * _mm_set1_epi8:     Returns a vector with the same i8 in each lane.
+//
+// * _mm_subs_epi8:    Saturating-subtracts two i8 vectors.
+// * _mm_and_si128:    Ands two i128s together.
+// * _mm_or_si128:     Ors two i128s together.
+// * _mm_andnot_si128: And-nots two i128s together.
+//
+// * _mm_cmpeq_epi8: Component-wise compares two i8 vectors for equality,
+//                   filling each lane with 0x00 or 0xff.
+// * _mm_cmpgt_epi8: Same as above, but using > rather than ==.
+//
+// * _mm_loadu_si128:  Performs an unaligned load of an i128.
+// * _mm_storeu_si128: Performs an unaligned store of a u128.
+//
+// * _mm_sign_epi8:     Retains, negates, or zeroes each i8 lane of the first
+//                      argument if the corresponding lane of the second
+//                      argument is positive, negative, or zero, respectively.
+// * _mm_movemask_epi8: Selects the sign bit out of each i8 lane and produces a
+//                      bitmask consisting of those bits.
+// * _mm_shuffle_epi8:  Selects i8s from the first argument, using the low
+//                      four bits of each i8 lane in the second argument as
+//                      indices.
 typedef __m128i CWISS_Group;
   #define CWISS_Group_kWidth ((size_t)16)
   #define CWISS_Group_kShift 0
@@ -131,13 +190,11 @@ typedef __m128i CWISS_Group;
 // when using -funsigned-char under GCC.
 static inline CWISS_Group CWISS_mm_cmpgt_epi8_fixed(CWISS_Group a,
                                                     CWISS_Group b) {
-  #if defined(__GNUC__) && !defined(__clang__)
-  if (CHAR_MIN == 0) {  // std::is_unsigned_v<char>
+  if (CWISS_IS_GCC && CHAR_MIN == 0) {  // std::is_unsigned_v<char>
     const CWISS_Group mask = _mm_set1_epi8(0x80);
     const CWISS_Group diff = _mm_subs_epi8(b, a);
     return _mm_cmpeq_epi8(_mm_and_si128(diff, mask), mask);
   }
-  #endif
   return _mm_cmpgt_epi8(a, b);
 }
 

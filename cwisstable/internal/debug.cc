@@ -123,4 +123,4 @@ HashtableDebugProbeSummary GetHashtableDebugProbeSummary(
   summary.mean = 1.0 * summary.total_num_probes / summary.total_elements;
   return summary;
 }
-}  // namespace cwisstable
+}  // namespace cwisstable::internal

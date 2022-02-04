@@ -24,40 +24,41 @@
 #include "cwisstable/capacity.h"
 #include "cwisstable/ctrl.h"
 
-// Table probing functions.
+/// Table probing functions.
+///
+/// "Probing" refers to the process of trying to find the matching entry for a
+/// given lookup by repeatedly searching for values throughout the table.
 
 CWISS_BEGIN_
 CWISS_BEGIN_EXTERN_
 
-typedef struct {
-  size_t offset;
-  size_t probe_length;
-} CWISS_FindInfo;
-
-// The representation of the object has two modes:
-//  - small: For capacities < kWidth-1
-//  - large: For the rest.
-//
-// Differences:
-//  - In small mode we are able to use the whole capacity. The extra control
-//  bytes give us at least one "empty" control byte to stop the iteration.
-//  This is important to make 1 a valid capacity.
-//
-//  - In small mode only the first `capacity()` control bytes after the
-//  sentinel are valid. The rest contain dummy ctrl_t::kEmpty values that do not
-//  represent a real slot. This is important to take into account on
-//  find_first_non_full(), where we never try ShouldInsertBackwards() for
-//  small tables.
-static inline bool CWISS_is_small(size_t capacity) {
-  return capacity < CWISS_Group_kWidth - 1;
-}
-
+/// The state for a probe sequence.
+///
+/// Currently, the sequence is a triangular progression of the form
+/// ```
+/// p(i) := kWidth/2 * (i^2 - i) + hash (mod mask + 1)
+/// ```
+///
+/// The use of `kWidth` ensures that each probe step does not overlap groups;
+/// the sequence effectively outputs the addresses of *groups* (although not
+/// necessarily aligned to any boundary). The `CWISS_Group` machinery allows us
+/// to check an entire group with minimal branching.
+///
+/// Wrapping around at `mask + 1` is important, but not for the obvious reason.
+/// As described in capacity.h, the first few entries of the control byte array
+/// is mirrored at the end of the array, which `CWISS_Group` will find and use
+/// for selecting candidates. However, when those candidates' slots are
+/// actually inspected, there are no corresponding slots for the cloned bytes,
+/// so we need to make sure we've treated those offsets as "wrapping around".
 typedef struct {
   size_t mask_;
   size_t offset_;
   size_t index_;
 } CWISS_probe_seq;
 
+/// Creates a new probe sequence using `hash` as the initial value of the
+/// sequence and `mask` (usually the capacity of the table) as the mask to
+/// apply to each value in the progression.
 static inline CWISS_probe_seq CWISS_probe_seq_new(size_t hash, size_t mask) {
   return (CWISS_probe_seq){
       .mask_ = mask,
@@ -65,32 +66,41 @@ static inline CWISS_probe_seq CWISS_probe_seq_new(size_t hash, size_t mask) {
   };
 }
 
+/// Returns the slot `i` indices ahead of `self` within the bounds expressed by
+/// `mask`.
 static inline size_t CWISS_probe_seq_offset(const CWISS_probe_seq* self,
                                             size_t i) {
   return (self->offset_ + i) & self->mask_;
 }
 
+/// Advances the sequence; the value can be obtained by calling
+/// `CWISS_probe_seq_offset()` or inspecting `offset_`.
 static inline void CWISS_probe_seq_next(CWISS_probe_seq* self) {
   self->index_ += CWISS_Group_kWidth;
   self->offset_ += self->index_;
   self->offset_ &= self->mask_;
 }
 
+/// Begins a probing operation on `ctrl`, using `hash`.
 static inline CWISS_probe_seq CWISS_probe(const CWISS_ctrl_t* ctrl, size_t hash,
                                           size_t capacity) {
   return CWISS_probe_seq_new(CWISS_H1(hash, ctrl), capacity);
 }
 
-// Probes the raw_hash_set with the probe sequence for hash and returns the
-// pointer to the first empty or deleted slot.
-// NOTE: this function must work with tables having both ctrl_t::kEmpty and
-// ctrl_t::kDeleted in one group. Such tables appears during
-// drop_deletes_without_resize.
-//
-// This function is very useful when insertions happen and:
-// - the input is already a set
-// - there are enough slots
-// - the element with the hash is not in the table
+// The return value of `CWISS_find_first_non_full()`.
+typedef struct {
+  size_t offset;
+  size_t probe_length;
+} CWISS_FindInfo;
+
+/// Probes an array of control bits using a probe sequence derived from `hash`,
+/// and returns the offset corresponding to the first deleted or empty slot.
+///
+/// Behavior when the entire table is full is undefined.
+///
+/// NOTE: this function must work with tables having both empty and deleted
+/// slots in the same group. Such tables appear during
+/// `CWISS_RawHashSet_drop_deletes_without_resize()`.
 static inline CWISS_FindInfo CWISS_find_first_non_full(const CWISS_ctrl_t* ctrl,
                                                        size_t hash,
                                                        size_t capacity) {
@@ -99,7 +109,7 @@ static inline CWISS_FindInfo CWISS_find_first_non_full(const CWISS_ctrl_t* ctrl,
     CWISS_Group g = CWISS_Group_new(ctrl + seq.offset_);
     CWISS_BitMask mask = CWISS_Group_MatchEmptyOrDeleted(&g);
     if (mask.mask) {
-#if !defined(NDEBUG)
+#ifndef NDEBUG
       // We want to add entropy even when ASLR is not enabled.
       // In debug build we will randomly insert in either the front or back of
       // the group.
