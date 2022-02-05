@@ -18,11 +18,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "cwisstable/policy.h"
 #include "cwisstable/declare.h"
+#include "cwisstable/policy.h"
 
 /// Example API expansion of declare.h set macros.
-/// 
+///
 /// Should be kept in sync with declare.h; unfortunately we don't have an easy
 /// way to test this just yet.
 
@@ -32,7 +32,9 @@
 static inline const CWISS_Policy* MySet_policy();
 
 /// The generated type.
-typedef struct { /* ... */ } MySet;
+typedef struct {
+  /* ... */
+} MySet;
 
 /// Constructs a new set with the given initial capacity.
 static inline MySet MySet_new(size_t capacity);
@@ -72,7 +74,9 @@ static inline size_t MySet_capacity(const MySet* self);
 static inline void MySet_clear(MySet* self);
 
 /// A non-mutating iterator into a `MySet`.
-typedef struct { /* ... */ } MySet_CIter;
+typedef struct {
+  /* ... */
+} MySet_CIter;
 
 /// Creates a new non-mutating iterator fro this table.
 static inline MySet_CIter MySet_citer(const MySet* self);
@@ -88,7 +92,9 @@ static inline const T* MySet_CIter_get(const MySet_CIter* it);
 static inline const T* MySet_CIter_next(const MySet_CIter* it);
 
 /// A mutating iterator into a `MySet`.
-typedef struct { /* ... */ } MySet_Iter;
+typedef struct {
+  /* ... */
+} MySet_Iter;
 
 /// Creates a new mutating iterator fro this table.
 static inline MySet_Iter MySet_iter(const MySet* self);
@@ -126,8 +132,8 @@ static inline MySet_Iter MySet_find(MySet* self, const T* key);
 /// Like `MySet_cfind`, but takes a pre-computed hash.
 ///
 /// The hash must be correct for `key`.
-static inline MySet_CIter MySet_cfind_hinted(const MySet* self,
-                                             const T* key, size_t hash);
+static inline MySet_CIter MySet_cfind_hinted(const MySet* self, const T* key,
+                                             size_t hash);
 
 /// Like `MySet_find`, but takes a pre-computed hash.
 ///

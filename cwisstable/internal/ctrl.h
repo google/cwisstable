@@ -198,7 +198,7 @@ static inline CWISS_Group CWISS_mm_cmpgt_epi8_fixed(CWISS_Group a,
   return _mm_cmpgt_epi8(a, b);
 }
 
-CWISS_Group CWISS_Group_new(const CWISS_ctrl_t* pos) {
+static inline CWISS_Group CWISS_Group_new(const CWISS_ctrl_t* pos) {
   return _mm_loadu_si128((const CWISS_Group*)pos);
 }
 
@@ -254,7 +254,7 @@ typedef uint64_t CWISS_Group;
   #define CWISS_Group_kShift 3
 
 // NOTE: Endian-hostile.
-CWISS_Group CWISS_Group_new(const CWISS_ctrl_t* pos) {
+static inline CWISS_Group CWISS_Group_new(const CWISS_ctrl_t* pos) {
   CWISS_Group val;
   memcpy(&val, pos, sizeof(val));
   return val;

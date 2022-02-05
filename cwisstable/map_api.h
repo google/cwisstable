@@ -18,11 +18,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "cwisstable/policy.h"
 #include "cwisstable/declare.h"
+#include "cwisstable/policy.h"
 
 /// Example API expansion of declare.h map macros.
-/// 
+///
 /// Should be kept in sync with declare.h; unfortunately we don't have an easy
 /// way to test this just yet.
 
@@ -32,7 +32,9 @@
 static inline const CWISS_Policy* MyMap_policy();
 
 /// The generated type.
-typedef struct { /* ... */ } MyMap;
+typedef struct {
+  /* ... */
+} MyMap;
 
 /// A key-value pair in the map.
 typedef struct {
@@ -78,7 +80,9 @@ static inline size_t MyMap_capacity(const MyMap* self);
 static inline void MyMap_clear(MyMap* self);
 
 /// A non-mutating iterator into a `MyMap`.
-typedef struct { /* ... */ } MyMap_CIter;
+typedef struct {
+  /* ... */
+} MyMap_CIter;
 
 /// Creates a new non-mutating iterator fro this table.
 static inline MyMap_CIter MyMap_citer(const MyMap* self);
@@ -94,7 +98,9 @@ static inline const MyMap_Entry* MyMap_CIter_get(const MyMap_CIter* it);
 static inline const MyMap_Entry* MyMap_CIter_next(const MyMap_CIter* it);
 
 /// A mutating iterator into a `MyMap`.
-typedef struct { /* ... */ } MyMap_Iter;
+typedef struct {
+  /* ... */
+} MyMap_Iter;
 
 /// Creates a new mutating iterator fro this table.
 static inline MyMap_Iter MyMap_iter(const MyMap* self);
@@ -132,8 +138,8 @@ static inline MyMap_Iter MyMap_find(MyMap* self, const K* key);
 /// Like `MyMap_cfind`, but takes a pre-computed hash.
 ///
 /// The hash must be correct for `key`.
-static inline MyMap_CIter MyMap_cfind_hinted(const MyMap* self,
-                                             const K* key, size_t hash);
+static inline MyMap_CIter MyMap_cfind_hinted(const MyMap* self, const K* key,
+                                             size_t hash);
 
 /// Like `MyMap_find`, but takes a pre-computed hash.
 ///

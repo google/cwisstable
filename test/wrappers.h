@@ -154,7 +154,11 @@ CWISS_BIND_FUNC(NormalizeCapacity);
 CWISS_BIND_FUNC(GrowthToLowerboundCapacity);
 CWISS_BIND_FUNC(CapacityToGrowth);
 
+// GCC likes to whine about __mi128 here dropping an attribute.
+CWISS_GCC_PUSH_
+CWISS_GCC_ALLOW_("-Wignored-attributes")
 CWISS_BIND_STRUCT(Group) {
+  CWISS_GCC_POP_
   // This is actually fine because CWISS_ctrl_t is going to be a character type
   // on ~every platform.
   Group(const ctrl_t* p) : Group(reinterpret_cast<const CWISS_ctrl_t*>(p)) {}

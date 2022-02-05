@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load(
+    "//:copts.bzl",
+    "CWISS_DEFAULT_COPTS",
+    "CWISS_DEFAULT_LINKOPTS",
+    "CWISS_C_VERSION",
+    "CWISS_CXX_VERSION",
+)
+
 filegroup(
     name = "public_headers",
     srcs = [
@@ -34,10 +42,12 @@ filegroup(
 )
 
 cc_library(
-  name = "split",
-  hdrs = [":public_headers"],
-  srcs = [":private_headers"],
-  visibility = ["//visibility:public"],
+    name = "split",
+    hdrs = [":public_headers"],
+    srcs = [":private_headers"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+    visibility = ["//visibility:public"],
 )
 
 genrule(
@@ -58,15 +68,37 @@ genrule(
 )
 
 cc_library(
-  name = "unified",
-  hdrs = ["cwisstable.h"],
-  visibility = ["//visibility:public"],
+    name = "unified",
+    hdrs = ["cwisstable.h"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "debug",
     hdrs = ["cwisstable/internal/debug.h"],
     srcs = ["cwisstable/internal/debug.cc"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
     deps = [":unified"],
     visibility = ["//:__subpackages__"],
+)
+
+config_setting(
+    name = "clang_compiler",
+    flag_values = {"@bazel_tools//tools/cpp:compiler": "clang"},
+    visibility = [":__subpackages__"],
+)
+
+config_setting(
+    name = "msvc_compiler",
+    flag_values = {"@bazel_tools//tools/cpp:compiler": "mscv-cl"},
+    visibility = [":__subpackages__"],
+)
+
+config_setting(
+    name = "clang-cl_compiler",
+    flag_values = {"@bazel_tools//tools/cpp:compiler": "clang-cl"},
+    visibility = [":__subpackages__"],
 )
