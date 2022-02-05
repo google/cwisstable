@@ -67,7 +67,7 @@ def main():
     help='location to output the file to'
   )
   parser.add_argument(
-    '--includes_relative_to',
+    '--include_dir',
     type=Path,
     default='.',
     help='directory path that "cwisstable/*.h" includes are relative to'
@@ -75,16 +75,31 @@ def main():
   parser.add_argument(
     'hdrs',
     type=Path,
-    nargs='+',
+    default=[Path('cwisstable/policy.h'), Path('cwisstable/declare.h')],
+    nargs='*',
     help='headers to agglomerate'
   )
   args = parser.parse_args()
 
   hdrs = {}
-  include_dir = args.includes_relative_to.resolve()
-  for hdr_open_path in args.hdrs:
-    hdr_include_path = (Path.cwd() / hdr_open_path).relative_to(include_dir)
-    hdrs[hdr_include_path] = Header(hdr_include_path, hdr_open_path)
+  include_dir = args.include_dir.resolve()
+  for open_path in args.hdrs:
+    include_path = (Path.cwd() / open_path).relative_to(include_dir)
+    hdrs[include_path] = Header(include_path, open_path)
+
+  while True:
+    new_hdrs = []
+    for hdr in hdrs.values():
+      for inc in hdr.includes:
+        include_path = Path(inc.strip('"'))
+        open_path = include_dir / include_path
+
+        if include_path not in hdrs and open_path.exists():
+          new_hdrs.append(Header(include_path, open_path))
+    if not new_hdrs:
+      break
+    for hdr in new_hdrs:
+      hdrs[hdr.path] = hdr
 
   hdr_names = {f'"{name}"' for name, _ in hdrs.items()}
   external_includes = set()
