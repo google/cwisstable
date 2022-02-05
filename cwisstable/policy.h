@@ -22,13 +22,63 @@
 #include <string.h>
 
 #include "cwisstable/base.h"
+#include "cwisstable/extract.h"
 
-// Table policies, which define how a particular kind of table operates on the
-// objects it tracks.
+/// Hash table policies.
+///
+/// Table policies are `cwisstable`'s generic code mechanism. All code in
+/// `cwisstable`'s internals is completely agnostic to:
+/// - The layout of the elements.
+/// - The storage strategy for the elements (inline, indirect in the heap).
+/// - Hashing, comparison, and allocation.
+///
+/// This information is provided to `cwisstable`'s internals by way of a
+/// *policy*: a vtable describing how to move elements around, hash them,
+/// compare them, allocate storage for them, and so on and on. This design is
+/// inspired by Abseil's equivalent, which is a template parameter used for
+/// sharing code between all the SwissTable-backed containers.
+///
+/// Unlike Abseil, policies are part of `cwisstable`'s public interface. Due to
+/// C's lack of any mechanism for detecting the gross properties of types,
+/// types with unwritten invariants, such as C strings (NUL-terminated byte
+/// arrays), users must be able to carefully describe to `cwisstable` how to
+/// correctly do things to their type. DESIGN.md goes into detailed rationale
+/// for this polymorphism strategy.
+///
+/// # Defining a Policy
+///
+/// Policies are defined as read-only globals and passed around by pointer to
+/// different `cwisstable` functions; macros are provided for doing this, since
+/// most of these functions will not vary significantly from one type to
+/// another. There are four of them:
+///
+/// - `CWISS_DECLARE_FLAT_SET_POLICY(kPolicy, Type, ...)`
+/// - `CWISS_DECLARE_FLAT_MAP_POLICY(kPolicy, Key, Value, ...)`
+/// - `CWISS_DECLARE_NODE_SET_POLICY(kPolicy, Type, ...)`
+/// - `CWISS_DECLARE_NODE_MAP_POLICY(kPolicy, Key, Value, ...)`
+///
+/// These correspond to the four SwissTable types in Abseil: two map types and
+/// two set types; "flat" means that elements are stored inline in the backing
+/// array, whereas "node" means that the element is stored in its own heap
+/// allocation, making it stable across rehashings (which SwissTable does more
+/// or less whenever it feels like it).
+///
+/// Each macro expands to a read-only global variable definition (with the name
+/// `kPolicy`, i.e, the first variable) dedicated for the specified type(s).
+/// The arguments that follow are overrides for the default values of each field
+/// in the policy; all but the size and alignment fields of `CWISS_ObjectPolicy`
+/// may be overridden. To override the field `kPolicy.foo.bar`, pass
+/// `(foo_bar, value)` to the macro. If multiple such pairs are passed in, the
+/// first one found wins. `examples/stringmap.c` provides an example of how to
+/// use this functionality.
+///
+/// For "common" uses, where the key and value are plain-old-data, `declare.h`
+/// has dedicated macros, and fussing with policies directly is unnecessary.
 
 CWISS_BEGIN_
 CWISS_BEGIN_EXTERN_
 
+// TODO: These should be put into their own file.
 typedef size_t CWISS_FxHash_State;
 static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
                                       const void* val, size_t len) {
@@ -52,83 +102,225 @@ static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
   *state = state_;
 }
 
+/// A policy describing the basic laying properties of a type.
+///
+/// This type describes how to move values of a particular type around.
 typedef struct {
-  // The size and alignment of the stored object.
+  /// The layout of the stored object.
   size_t size, align;
 
-  // Copies an object.
+  /// Performs a deep copy of `src` onto a fresh location `dst`.
   void (*copy)(void* dst, const void* src);
 
-  // Destroys an object.
-  //
-  // This function may, as an optimization, be null. This will cause it to
-  // behave as a no-op.
+  /// Destroys an object.
+  ///
+  /// This member may, as an optimization, be null. This will cause it to
+  /// behave as a no-op, and may be more efficient than making this an empty
+  /// function.
   void (*dtor)(void* val);
 } CWISS_ObjectPolicy;
 
-#define CWISS_DECLARE_POD_OBJECT(kPolicy_, Type_)                  \
-  static inline void kPolicy_##_copy(void* dst, const void* src) { \
-    memcpy(dst, src, sizeof(Type_));                               \
-  }                                                                \
-  static const CWISS_ObjectPolicy kPolicy_ = {                     \
-      sizeof(Type_),                                               \
-      alignof(Type_),                                              \
-      kPolicy_##_copy,                                             \
-      NULL,                                                        \
-  }
-
-#define CWISS_DECLARE_OBJECT_WITH(kPolicy_, Type_, copy_, dtor_)         \
-  static inline void kPolicy_##_copy_value(void* dst, const void* src) { \
-    memcpy(dst, src, sizeof(Type_));                                     \
-  }                                                                      \
-  static const CWISS_ObjectPolicy kPolicy_ = {                           \
-      sizeof(Type_),                                                     \
-      alignof(Type_),                                                    \
-      copy_,                                                             \
-      dtor_,                                                             \
-  }
-
+/// A policy describing the hashing properties of a type.
+///
+/// This type describes the necessary information for putting a value into a
+/// hash table.
 typedef struct {
-  // Hashes a value.
-  //
-  // This function must be such that if two elements compare equal, they must
-  // have the same hash (but not vice-versa).
+  /// Computes the hash of a value.
+  ///
+  /// This function must be such that if two elements compare equal, they must
+  /// have the same hash (but not vice-versa).
   size_t (*hash)(const void* val);
 
-  // Compares two values for equality.
+  /// Compares two values for equality.
   bool (*eq)(const void* a, const void* b);
 } CWISS_KeyPolicy;
 
-#define CWISS_DECLARE_POD_SET_KEY(kPolicy_, Type_) \
-  CWISS_DECLARE_POD_MAP_KEY(kPolicy_, Type_, Type_)
-
-#define CWISS_DECLARE_POD_MAP_KEY(kPolicy_, Type_, K_)             \
-  static inline size_t kPolicy_##_hash(const void* val) {          \
-    CWISS_FxHash_State state = 0;                                  \
-    CWISS_FxHash_Write(&state, val, sizeof(K_));                   \
-    return state;                                                  \
-  }                                                                \
-  static inline bool kPolicy_##_eq(const void* a, const void* b) { \
-    return memcmp(a, b, sizeof(K_)) == 0;                          \
-  }                                                                \
-  static const CWISS_KeyPolicy kPolicy_ = {                        \
-      kPolicy_##_hash,                                             \
-      kPolicy_##_eq,                                               \
-  }
-
+/// A policy for allocation.
+///
+/// This type provides access to a custom allocator.
 typedef struct {
-  // Allocates memory for use by the table's backing array.
-  //
-  // Allocators must never fail and never return null, unlike `malloc`. This
-  // function does not need to tolerate zero sized allocations.
+  /// Allocates memory.
+  ///
+  /// This function must never fail and never return null, unlike `malloc`. This
+  /// function does not need to tolerate zero sized allocations.
   void* (*alloc)(size_t size, size_t align);
 
-  // Deallocates memory allocated by `alloc`.
-  //
-  // This function is passed the same size/alignment as was passed to `alloc`,
-  // allowing for sized-delete optimizations.
+  /// Deallocates memory allocated by `alloc`.
+  ///
+  /// This function is passed the same size/alignment as was passed to `alloc`,
+  /// allowing for sized-delete optimizations.
   void (*free)(void* array, size_t size, size_t align);
 } CWISS_AllocPolicy;
+
+/// A policy for allocating space for slots.
+///
+/// This allows us to distinguish between inline storage (more cache-friendly)
+/// and outline (pointer-stable).
+typedef struct {
+  /// The layout of a slot value.
+  ///
+  /// Usually, this will be the same as for the object type, *or* the layout
+  /// of a pointer (for outline storage).
+  size_t size, align;
+
+  /// Initializes a new slot at the given location.
+  ///
+  /// This function does not initialize the value *in* the slot; it simply sets
+  /// up the slot so that a value can be `memcpy`'d or otherwise emplaced into
+  /// the slot.
+  void (*init)(void* slot);
+
+  /// Destroys a slot, including the destruction of the value it contains.
+  ///
+  /// This function may, as an optimization, be null. This will cause it to
+  /// behave as a no-op.
+  void (*del)(void* slot);
+
+  /// Transfers a slot.
+  ///
+  /// `dst` must be uninitialized; `src` must be initialized. After this
+  /// function, their roles will be switched: `dst` will be initialized and
+  /// contain the value from `src`; `src` will be initialized.
+  ///
+  /// This function need not actually copy the underlying value.
+  void (*transfer)(void* dst, void* src);
+
+  /// Extracts a pointer to the value inside the a slot.
+  ///
+  /// This function does not need to tolerate nulls.
+  void* (*get)(void* slot);
+} CWISS_SlotPolicy;
+
+/// A hash table policy.
+///
+/// See the header documentation for more information.
+typedef struct {
+  const CWISS_ObjectPolicy* obj;
+  const CWISS_KeyPolicy* key;
+  const CWISS_AllocPolicy* alloc;
+  const CWISS_SlotPolicy* slot;
+} CWISS_Policy;
+
+/// Declares a hash set policy with inline storage for the given type.
+///
+/// See the header documentation for more information.
+#define CWISS_DECLARE_FLAT_SET_POLICY(kPolicy_, Type_, ...) \
+  CWISS_DECLARE_POLICY_(kPolicy_, Type_, Type_, __VA_ARGS__)
+
+/// Declares a hash map policy with inline storage for the given key and value
+/// types.
+///
+/// See the header documentation for more information.
+#define CWISS_DECLARE_FLAT_MAP_POLICY(kPolicy_, K_, V_, ...) \
+  typedef struct {                                           \
+    K_ k;                                                    \
+    V_ v;                                                    \
+  } kPolicy_##_Entry;                                        \
+  CWISS_DECLARE_POLICY_(kPolicy_, kPolicy_##_Entry, K_, __VA_ARGS__)
+
+/// Declares a hash set policy with pointer-stable storage for the given type.
+///
+/// See the header documentation for more information.
+#define CWISS_DECLARE_NODE_SET_POLICY(kPolicy_, Type_, ...)          \
+  CWISS_DECLARE_NODE_FUNCTIONS_(kPolicy_, Type_, Type_, __VA_ARGS__) \
+  CWISS_DECLARE_POLICY_(kPolicy_, Type_, Type_, __VA_ARGS__,         \
+                        CWISS_NODE_OVERRIDES_(kPolicy_))
+
+/// Declares a hash map policy with pointer-stable storage for the given key and
+/// value types.
+///
+/// See the header documentation for more information.
+#define CWISS_DECLARE_NODE_MAP_POLICY(kPolicy_, K_, V_, ...)                 \
+  typedef struct {                                                           \
+    K_ k;                                                                    \
+    V_ v;                                                                    \
+  } kPolicy_##_Entry;                                                        \
+  CWISS_DECLARE_NODE_FUNCTIONS_(kPolicy_, kPolicy_##_Entry, K_, __VA_ARGS__) \
+  CWISS_DECLARE_POLICY_(kPolicy_, kPolicy_##_Entry, K_, __VA_ARGS__,         \
+                        CWISS_NODE_OVERRIDES_(kPolicy_))
+
+// ---- PUBLIC API ENDS HERE! ----
+
+#define CWISS_DECLARE_POLICY_(kPolicy_, Type_, Key_, ...)                    \
+  static inline void kPolicy_##_DefaultCopy(void* dst, const void* src) {    \
+    memcpy(dst, src, sizeof(Type_));                                         \
+  }                                                                          \
+  static inline size_t kPolicy_##_DefaultHash(const void* val) {             \
+    CWISS_FxHash_State state = 0;                                            \
+    CWISS_FxHash_Write(&state, val, sizeof(Key_));                           \
+    return state;                                                            \
+  }                                                                          \
+  static inline bool kPolicy_##_DefaultEq(const void* a, const void* b) {    \
+    return memcmp(a, b, sizeof(Key_)) == 0;                                  \
+  }                                                                          \
+  static inline void kPolicy_##_DefaultSlotInit(void* slot) {}               \
+  static inline void kPolicy_##_DefaultSlotTransfer(void* dst, void* src) {  \
+    memcpy(dst, src, sizeof(Type_));                                         \
+  }                                                                          \
+  static inline void* kPolicy_##_DefaultSlotGet(void* slot) { return slot; } \
+  static inline void kPolicy_##_DefaultSlotDtor(void* slot) {                \
+    if (CWISS_EXTRACT(obj_dtor, NULL, __VA_ARGS__) != NULL) {                \
+      CWISS_EXTRACT(obj_dtor, (void (*)(void*))NULL, __VA_ARGS__)(slot);     \
+    }                                                                        \
+  }                                                                          \
+                                                                             \
+  static const CWISS_ObjectPolicy kPolicy_##_ObjectPolicy = {                \
+      sizeof(Type_),                                                         \
+      alignof(Type_),                                                        \
+      CWISS_EXTRACT(obj_copy, kPolicy_##_DefaultCopy, __VA_ARGS__),          \
+      CWISS_EXTRACT(obj_dtor, NULL, __VA_ARGS__),                            \
+  };                                                                         \
+  static const CWISS_KeyPolicy kPolicy_##_KeyPolicy = {                      \
+      CWISS_EXTRACT(key_hash, kPolicy_##_DefaultHash, __VA_ARGS__),          \
+      CWISS_EXTRACT(key_eq, kPolicy_##_DefaultEq, __VA_ARGS__),              \
+  };                                                                         \
+  static const CWISS_AllocPolicy kPolicy_##_AllocPolicy = {                  \
+      CWISS_EXTRACT(alloc_alloc, CWISS_DefaultMalloc, __VA_ARGS__),          \
+      CWISS_EXTRACT(alloc_free, CWISS_DefaultFree, __VA_ARGS__),             \
+  };                                                                         \
+  static const CWISS_SlotPolicy kPolicy_##_SlotPolicy = {                    \
+      CWISS_EXTRACT(slot_size, sizeof(Type_), __VA_ARGS__),                  \
+      CWISS_EXTRACT(slot_align, sizeof(Type_), __VA_ARGS__),                 \
+      CWISS_EXTRACT(slot_init, kPolicy_##_DefaultSlotInit, __VA_ARGS__),     \
+      CWISS_EXTRACT(slot_dtor, kPolicy_##_DefaultSlotDtor, __VA_ARGS__),     \
+      CWISS_EXTRACT(slot_transfer, kPolicy_##_DefaultSlotTransfer,           \
+                    __VA_ARGS__),                                            \
+      CWISS_EXTRACT(slot_get, kPolicy_##_DefaultSlotGet, __VA_ARGS__),       \
+  };                                                                         \
+  static const CWISS_Policy kPolicy_ = {                                     \
+      &kPolicy_##_ObjectPolicy,                                              \
+      &kPolicy_##_KeyPolicy,                                                 \
+      &kPolicy_##_AllocPolicy,                                               \
+      &kPolicy_##_SlotPolicy,                                                \
+  }
+
+#define CWISS_DECLARE_NODE_FUNCTIONS_(kPolicy_, Type_, ...)                    \
+  static inline void kPolicy_##_NodeSlotInit(void* slot) {                     \
+    void* node = CWISS_EXTRACT(alloc_alloc, CWISS_DefaultMalloc, __VA_ARGS__)( \
+        sizeof(Type_), alignof(Type_));                                        \
+    memcpy(slot, &node, sizeof(node));                                         \
+  }                                                                            \
+  static inline void kPolicy_##_NodeSlotDtor(void* slot) {                     \
+    if (CWISS_EXTRACT(obj_dtor, NULL, __VA_ARGS__) != NULL) {                  \
+      CWISS_EXTRACT(obj_dtor, (void (*)(void*))NULL, __VA_ARGS__)              \
+      (*(void**)slot);                                                         \
+    }                                                                          \
+    CWISS_EXTRACT(alloc_free, CWISS_DefaultFree, __VA_ARGS__)                  \
+    (*(void**)slot, sizeof(Type_), alignof(Type_));                            \
+  }                                                                            \
+  static inline void kPolicy_##_NodeSlotTransfer(void* dst, void* src) {       \
+    memcpy(dst, src, sizeof(void*));                                           \
+  }                                                                            \
+  static inline void* kPolicy_##_NodeSlotGet(void* slot) {                     \
+    return *((void**)slot);                                                    \
+  }
+
+#define CWISS_NODE_OVERRIDES_(kPolicy_)                     \
+  (slot_size, sizeof(void*)), (slot_align, alignof(void*)), \
+      (slot_init, kPolicy_##_NodeSlotInit),                 \
+      (slot_dtor, kPolicy_##_NodeSlotDtor),                 \
+      (slot_transfer, kPolicy_##_NodeSlotTransfer),         \
+      (slot_get, kPolicy_##_NodeSlotGet)
 
 static inline void* CWISS_DefaultMalloc(size_t size, size_t align) {
   void* p = malloc(size);  // TODO: Check alignment.
@@ -138,142 +330,6 @@ static inline void* CWISS_DefaultMalloc(size_t size, size_t align) {
 static inline void CWISS_DefaultFree(void* array, size_t size, size_t align) {
   free(array);
 }
-
-static const CWISS_AllocPolicy CWISS_kDefaultAlloc = {CWISS_DefaultMalloc,
-                                                      CWISS_DefaultFree};
-
-typedef struct {
-  // The size and alignment of the slot stored in the backing array of the
-  // table. For example, in a map, this might be a pair, while in a node-based
-  // structure, it could just be a pointer.
-  size_t size, align;
-
-  // Constructs a new slot, for placing a value into.
-  void (*init)(void* slot);
-  // Destroys a slot, including the destruction of the value it contains.
-  //
-  // This function may, as an optimization, be null. This will cause it to
-  // behave as a no-op.
-  void (*del)(void* slot);
-  // Transfers a slot.
-  //
-  // `dst` must be uninitialized; `src` must be initialized. After this
-  // function, their roles will be switched.
-  void (*transfer)(void* dst, void* src);
-  // Extracts an element out of `slot`, returning a pointer to it.
-  //
-  // This function does not need to tolerate nulls.
-  void* (*get)(void* slot);
-} CWISS_SlotPolicy;
-
-#define CWISS_DECLARE_FLAT_SLOT_POLICY(kPolicy_, kObject_, Type_)           \
-  static inline void kPolicy_##_slot_init(void* slot) {}                    \
-  static inline void kPolicy_##_slot_transfer(void* dst, void* src) {       \
-    memcpy(dst, src, kObject_.size);                                        \
-  }                                                                         \
-  static inline void* kPolicy_##_slot_get(void* slot) { return slot; }      \
-  static inline void kPolicy_##_slot_dtor(void* slot) {                     \
-    if (kObject_.dtor != NULL) {                                            \
-      kObject_.dtor(slot);                                                  \
-    }                                                                       \
-  }                                                                         \
-  static const CWISS_SlotPolicy kPolicy_ = {                                \
-      sizeof(Type_),        alignof(Type_),           kPolicy_##_slot_init, \
-      kPolicy_##_slot_dtor, kPolicy_##_slot_transfer, kPolicy_##_slot_get,  \
-  }
-
-#define CWISS_DECLARE_NODE_SLOT_POLICY(kPolicy_, kObject_, Type_)          \
-  static inline void kPolicy_##_slot_init(void* slot) {                    \
-    void* node = CWISS_DefaultMalloc(kObject_.size, kObject_.align);       \
-    memcpy(slot, &node, sizeof(node));                                     \
-  }                                                                        \
-  static inline void kPolicy_##_slot_del(void* slot) {                     \
-    if (kObject_.dtor != NULL) {                                           \
-      kObject_.dtor(*((void**)slot));                                      \
-    }                                                                      \
-    CWISS_DefaultFree(*(void**)slot, kObject_.size, kObject_.align);       \
-  }                                                                        \
-  static inline void kPolicy_##_slot_transfer(void* dst, void* src) {      \
-    memcpy(dst, src, sizeof(void*));                                       \
-  }                                                                        \
-  static inline void* kPolicy_##_slot_get(void* slot) {                    \
-    return *((void**)slot);                                                \
-  }                                                                        \
-  static const CWISS_SlotPolicy kPolicy_ = {                               \
-      sizeof(void*),       alignof(void*),           kPolicy_##_slot_init, \
-      kPolicy_##_slot_del, kPolicy_##_slot_transfer, kPolicy_##_slot_get,  \
-  }
-
-// A hash table policy.
-//
-// Policies define how elements are manipulated inside of a hash table, allowing
-// for fine control over storage, allocating, hashing, and comparison
-// strategies.
-typedef struct {
-  const CWISS_ObjectPolicy* obj;
-  const CWISS_KeyPolicy* key;
-  const CWISS_AllocPolicy* alloc;
-  const CWISS_SlotPolicy* slot;
-} CWISS_Policy;
-
-// TODO(#5): Provide better macros for generating policies for complex types
-// like heap-allocated character buffers (e.g. C-style strings).
-
-#define CWISS_DECLARE_POD_FLAT_POLICY(kPolicy_, Type_)            \
-  CWISS_DECLARE_POD_OBJECT(kPolicy_##_ObjectPolicy, Type_);       \
-  CWISS_DECLARE_POD_SET_KEY(kPolicy_##_KeyPolicy, Type_);         \
-  CWISS_DECLARE_FLAT_SLOT_POLICY(kPolicy_##_SlotPolicy,           \
-                                 kPolicy_##_ObjectPolicy, Type_); \
-  static const CWISS_Policy kPolicy_ = {                          \
-      &kPolicy_##_ObjectPolicy,                                   \
-      &kPolicy_##_KeyPolicy,                                      \
-      &CWISS_kDefaultAlloc,                                       \
-      &kPolicy_##_SlotPolicy,                                     \
-  }
-
-#define CWISS_DECLARE_POD_FLAT_MAP_POLICY(kPolicy_, K_, V_)                  \
-  typedef struct {                                                           \
-    K_ k;                                                                    \
-    V_ V;                                                                    \
-  } kPolicy_##_Entry;                                                        \
-  CWISS_DECLARE_POD_OBJECT(kPolicy_##_ObjectPolicy, kPolicy_##_Entry);       \
-  CWISS_DECLARE_POD_MAP_KEY(kPolicy_##_KeyPolicy, kPolicy_##_Entry, K_);     \
-  CWISS_DECLARE_FLAT_SLOT_POLICY(kPolicy_##_SlotPolicy,                      \
-                                 kPolicy_##_ObjectPolicy, kPolicy_##_Entry); \
-  static const CWISS_Policy kPolicy_ = {                                     \
-      &kPolicy_##_ObjectPolicy,                                              \
-      &kPolicy_##_KeyPolicy,                                                 \
-      &CWISS_kDefaultAlloc,                                                  \
-      &kPolicy_##_SlotPolicy,                                                \
-  }
-
-#define CWISS_DECLARE_POD_NODE_POLICY(kPolicy_, Type_)            \
-  CWISS_DECLARE_POD_OBJECT(kPolicy_##_ObjectPolicy, Type_);       \
-  CWISS_DECLARE_POD_KEY(kPolicy_##_KeyPolicy, Type_);             \
-  CWISS_DECLARE_NODE_SLOT_POLICY(kPolicy_##_SlotPolicy,           \
-                                 kPolicy_##_ObjectPolicy, Type_); \
-  static const CWISS_Policy kPolicy_ = {                          \
-      &kPolicy_##_ObjectPolicy,                                   \
-      &kPolicy_##_KeyPolicy,                                      \
-      &CWISS_kDefaultAlloc,                                       \
-      &kPolicy_##_SlotPolicy,                                     \
-  }
-
-#define CWISS_DECLARE_POD_NODE_MAP_POLICY(kPolicy_, K_, V_)                  \
-  typedef struct {                                                           \
-    K_ k;                                                                    \
-    V_ V;                                                                    \
-  } kPolicy_##_Entry;                                                        \
-  CWISS_DECLARE_POD_OBJECT(kPolicy_##_ObjectPolicy, kPolicy_##_Entry);       \
-  CWISS_DECLARE_POD_MAP_KEY(kPolicy_##_KeyPolicy, kPolicy_##_Entry, K_);     \
-  CWISS_DECLARE_NODE_SLOT_POLICY(kPolicy_##_SlotPolicy,                      \
-                                 kPolicy_##_ObjectPolicy, kPolicy_##_Entry); \
-  static const CWISS_Policy kPolicy_ = {                                     \
-      &kPolicy_##_ObjectPolicy,                                              \
-      &kPolicy_##_KeyPolicy,                                                 \
-      &CWISS_kDefaultAlloc,                                                  \
-      &kPolicy_##_SlotPolicy,                                                \
-  }
 
 CWISS_END_EXTERN_
 CWISS_END_

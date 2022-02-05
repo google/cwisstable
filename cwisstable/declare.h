@@ -27,24 +27,24 @@
 CWISS_BEGIN_
 CWISS_BEGIN_EXTERN_
 
-#define CWISS_DECLARE_FLAT_HASHSET(HashSet_, Type_)         \
-  CWISS_DECLARE_POD_FLAT_POLICY(HashSet_##_kPolicy, Type_); \
+#define CWISS_DECLARE_FLAT_HASHSET(HashSet_, Type_)                 \
+  CWISS_DECLARE_FLAT_SET_POLICY(HashSet_##_kPolicy, Type_, (x, x)); \
   CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, HashSet_##_kPolicy)
 
-#define CWISS_DECLARE_NODE_HASHSET(HashSet_, Type_)         \
-  CWISS_DECLARE_POD_NODE_POLICY(HashSet_##_kPolicy, Type_); \
+#define CWISS_DECLARE_NODE_HASHSET(HashSet_, Type_)                 \
+  CWISS_DECLARE_NODE_SET_POLICY(HashSet_##_kPolicy, Type_, (x, x)); \
   CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, HashSet_##_kPolicy)
 
 #define CWISS_DECLARE_HASHSET_WITH(HashSet_, Type_, kPolicy_) \
   typedef Type_ HashMap_##_Entry;                             \
   CWISS_DECLARE_COMMON_(HashSet_, HashMap_##_Entry, HashMap_##_Entry, kPolicy_)
 
-#define CWISS_DECLARE_FLAT_HASHMAP(HashMap_, K_, V_)             \
-  CWISS_DECLARE_POD_FLAT_MAP_POLICY(HashMap_##_kPolicy, K_, V_); \
+#define CWISS_DECLARE_FLAT_HASHMAP(HashMap_, K_, V_)                 \
+  CWISS_DECLARE_FLAT_MAP_POLICY(HashMap_##_kPolicy, K_, V_, (x, x)); \
   CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, HashMap_##_kPolicy)
 
-#define CWISS_DECLARE_NODE_HASHMAP(HashMap_, K_, V_)             \
-  CWISS_DECLARE_POD_NODE_MAP_POLICY(HashMap_##_kPolicy, K_, V_); \
+#define CWISS_DECLARE_NODE_HASHMAP(HashMap_, K_, V_)                 \
+  CWISS_DECLARE_NODE_MAP_POLICY(HashMap_##_kPolicy, K_, V_, (x, x)); \
   CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, HashMap_##_kPolicy)
 
 #define CWISS_DECLARE_HASHMAP_WITH(HashMap_, K_, V_, kPolicy_) \

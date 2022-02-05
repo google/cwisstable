@@ -45,18 +45,6 @@ static inline void kCStrPolicy_dtor(void* val) {
   char* str = *(char**)val;
   free(str);
 }
-static const CWISS_ObjectPolicy kCStrObjPolicy = {
-    sizeof(struct {
-      const char* c;
-      float f;
-    }),
-    alignof(struct {
-      const char* c;
-      float f;
-    }),
-    kCStrPolicy_copy,
-    kCStrPolicy_dtor,
-};
 
 static inline size_t kCStrPolicy_hash(const void* val) {
   const char* str = *(const char**)val;
@@ -70,19 +58,12 @@ static inline bool kCStrPolicy_eq(const void* a, const void* b) {
   const char* bp = *(const char**)b;
   return strcmp(ap, bp) == 0;
 }
-static const CWISS_KeyPolicy kCStrKeyPolicy = {
-    kCStrPolicy_hash,
-    kCStrPolicy_eq,
-};
 
-CWISS_DECLARE_NODE_SLOT_POLICY(kCStrSlotPolicy, kCStrObjPolicy, const char*);
-
-static const CWISS_Policy kCStrPolicy = {
-    &kCStrObjPolicy,
-    &kCStrKeyPolicy,
-    &CWISS_kDefaultAlloc,
-    &kCStrSlotPolicy,
-};
+CWISS_DECLARE_NODE_MAP_POLICY(kCStrPolicy, const char*, float,
+                              (obj_copy, kCStrPolicy_copy),
+                              (obj_dtor, kCStrPolicy_dtor),
+                              (key_hash, kCStrPolicy_hash),
+                              (key_eq, kCStrPolicy_eq));
 
 CWISS_DECLARE_HASHMAP_WITH(MyCStrMap, const char*, float, kCStrPolicy);
 
