@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CWISSTABLE_PROBE_H_
-#define CWISSTABLE_PROBE_H_
+#ifndef CWISSTABLE_INTERNAL_PROBE_H_
+#define CWISSTABLE_INTERNAL_PROBE_H_
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include "cwisstable/base.h"
-#include "cwisstable/bits.h"
-#include "cwisstable/capacity.h"
-#include "cwisstable/ctrl.h"
+#include "cwisstable/internal/base.h"
+#include "cwisstable/internal/bits.h"
+#include "cwisstable/internal/capacity.h"
+#include "cwisstable/internal/ctrl.h"
 
 /// Table probing functions.
 ///
@@ -133,4 +133,4 @@ static inline CWISS_FindInfo CWISS_find_first_non_full(const CWISS_ctrl_t* ctrl,
 CWISS_END_EXTERN_
 CWISS_END_
 
-#endif  // CWISSTABLE_PROBE_H_
+#endif  // CWISSTABLE_INTERNAL_PROBE_H_

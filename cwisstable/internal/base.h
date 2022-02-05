@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CWISSTABLE_BASE_H_
-#define CWISSTABLE_BASE_H_
+#ifndef CWISSTABLE_INTERNAL_BASE_H_
+#define CWISSTABLE_INTERNAL_BASE_H_
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -210,4 +210,4 @@
   #define CWISS_PREFETCH(addr_, locality_) ((void)0)
 #endif
 
-#endif  // CWISSTABLE_BASE_H_
+#endif  // CWISSTABLE_INTERNAL_BASE_H_

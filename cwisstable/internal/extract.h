@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CWISSTABLE_EXTRACT_H_
-#define CWISSTABLE_EXTRACT_H_
+#ifndef CWISSTABLE_INTERNAL_EXTRACT_H_
+#define CWISSTABLE_INTERNAL_EXTRACT_H_
 
 /// Macro keyword-arguments machinery.
 ///
@@ -420,4 +420,4 @@
 #define CWISS_SELECT3E_(_1, _2, _3, call, args, ...) call args
 #define CWISS_SELECT3F_(_1, _2, _3, call, args, ...) call args
 
-#endif  // CWISSTABLE_EXTRACT_H_
+#endif  // CWISSTABLE_INTERNAL_EXTRACT_H_

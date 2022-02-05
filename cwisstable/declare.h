@@ -18,9 +18,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "cwisstable/base.h"
+#include "cwisstable/internal/base.h"
+#include "cwisstable/internal/raw_hash_set.h"
 #include "cwisstable/policy.h"
-#include "cwisstable/raw_hash_set.h"
 
 /// SwissTable code generation macros.
 ///

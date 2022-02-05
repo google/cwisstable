@@ -23,13 +23,13 @@ filegroup(
 filegroup(
     name = "private_headers",
     srcs = [
-        "cwisstable/base.h",
-        "cwisstable/bits.h",
-        "cwisstable/capacity.h",
-        "cwisstable/ctrl.h",
-        "cwisstable/extract.h",
-        "cwisstable/probe.h",
-        "cwisstable/raw_hash_set.h",
+        "cwisstable/internal/base.h",
+        "cwisstable/internal/bits.h",
+        "cwisstable/internal/capacity.h",
+        "cwisstable/internal/ctrl.h",
+        "cwisstable/internal/extract.h",
+        "cwisstable/internal/probe.h",
+        "cwisstable/internal/raw_hash_set.h",
     ],
 )
 

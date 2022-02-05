@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CWISSTABLE_RAW_HASH_SET_H_
-#define CWISSTABLE_RAW_HASH_SET_H_
+#ifndef CWISSTABLE_INTERNAL_RAW_HASH_SET_H_
+#define CWISSTABLE_INTERNAL_RAW_HASH_SET_H_
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -21,12 +21,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cwisstable/base.h"
-#include "cwisstable/bits.h"
-#include "cwisstable/capacity.h"
-#include "cwisstable/ctrl.h"
+#include "cwisstable/internal/base.h"
+#include "cwisstable/internal/bits.h"
+#include "cwisstable/internal/capacity.h"
+#include "cwisstable/internal/ctrl.h"
 #include "cwisstable/policy.h"
-#include "cwisstable/probe.h"
+#include "cwisstable/internal/probe.h"
 
 /// The SwissTable implementation.
 ///
@@ -824,4 +824,4 @@ static inline bool CWISS_RawHashSet_contains(const CWISS_Policy* policy,
 CWISS_END_EXTERN_
 CWISS_END_
 
-#endif  // CWISSTABLE_RAW_HASH_SET_H_
+#endif  // CWISSTABLE_INTERNAL_RAW_HASH_SET_H_

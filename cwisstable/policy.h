@@ -21,8 +21,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cwisstable/base.h"
-#include "cwisstable/extract.h"
+#include "cwisstable/internal/base.h"
+#include "cwisstable/internal/extract.h"
 
 /// Hash table policies.
 ///

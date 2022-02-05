@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CWISSTABLE_CTRL_H_
-#define CWISSTABLE_CTRL_H_
+#ifndef CWISSTABLE_INTERNAL_CTRL_H_
+#define CWISSTABLE_INTERNAL_CTRL_H_
 
 #include <assert.h>
 #include <limits.h>
@@ -21,8 +21,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "cwisstable/base.h"
-#include "cwisstable/bits.h"
+#include "cwisstable/internal/base.h"
+#include "cwisstable/internal/bits.h"
 
 CWISS_BEGIN_
 CWISS_BEGIN_EXTERN_
@@ -311,4 +311,4 @@ static inline void CWISS_Group_ConvertSpecialToEmptyAndFullToDeleted(
 CWISS_END_EXTERN_
 CWISS_END_
 
-#endif  // CWISSTABLE_CTRL_H_
+#endif  // CWISSTABLE_INTERNAL_CTRL_H_

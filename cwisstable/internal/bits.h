@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CWISSTABLE_BITS_H_
-#define CWISSTABLE_BITS_H_
+#ifndef CWISSTABLE_INTERNAL_BITS_H_
+#define CWISSTABLE_INTERNAL_BITS_H_
 
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include "cwisstable/base.h"
+#include "cwisstable/internal/base.h"
 
 /// Bit manipulation utilities.
 
@@ -180,4 +180,4 @@ static inline bool CWISS_BitMask_next(CWISS_BitMask* self, uint32_t* bit) {
 CWISS_END_EXTERN_
 CWISS_END_
 
-#endif  // CWISSTABLE_BITS_H_
+#endif  // CWISSTABLE_INTERNAL_BITS_H_
