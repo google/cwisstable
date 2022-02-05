@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load(
+    "//:copts.bzl",
+    "CWISS_DEFAULT_COPTS",
+    "CWISS_DEFAULT_LINKOPTS",
+    "CWISS_C_VERSION",
+)
+
 cc_binary(
     name = "hashset_unified",
     srcs = ["hashset.c"],
     deps = ["//:unified"],
-    copts = ["--std=c11"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
 )
 
@@ -24,7 +32,8 @@ cc_binary(
     name = "hashset_split",
     srcs = ["hashset.c"],
     deps = ["//:split"],
-    copts = ["--std=c11"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )
 
@@ -32,7 +41,8 @@ cc_binary(
     name = "hashmap_unified",
     srcs = ["hashmap.c"],
     deps = ["//:unified"],
-    copts = ["--std=c11"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
 )
 
@@ -40,7 +50,8 @@ cc_binary(
     name = "hashmap_split",
     srcs = ["hashmap.c"],
     deps = ["//:split"],
-    copts = ["--std=c11"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )
 
@@ -48,7 +59,8 @@ cc_binary(
     name = "stringmap_unified",
     srcs = ["stringmap.c"],
     deps = ["//:unified"],
-    copts = ["--std=c11"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
 )
 
@@ -56,6 +68,7 @@ cc_binary(
     name = "stringmap_split",
     srcs = ["stringmap.c"],
     deps = ["//:split"],
-    copts = ["--std=c11"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )

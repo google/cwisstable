@@ -47,7 +47,7 @@ size_t AllocatedByteSize(const CWISS_Policy* policy,
 
 // Returns a tight lower bound for AllocatedByteSize(c) where `c` is of type `C`
 // and `c.size()` is equal to `num_elements`.
-size_t LowerBoundAllocatedByteSize(size_t size);
+size_t LowerBoundAllocatedByteSize(const CWISS_Policy* policy, size_t size);
 
 // Gets a histogram of the number of probes for each elements in the container.
 // The sum of all the values in the vector is equal to container.size().

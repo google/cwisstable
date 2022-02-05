@@ -25,8 +25,8 @@
 #include "cwisstable/internal/bits.h"
 #include "cwisstable/internal/capacity.h"
 #include "cwisstable/internal/ctrl.h"
-#include "cwisstable/policy.h"
 #include "cwisstable/internal/probe.h"
+#include "cwisstable/policy.h"
 
 /// The SwissTable implementation.
 ///

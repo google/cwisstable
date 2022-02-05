@@ -47,15 +47,15 @@ static inline void kCStrPolicy_dtor(void* val) {
 }
 
 static inline size_t kCStrPolicy_hash(const void* val) {
-  const char* str = *(const char**)val;
+  const char* str = *(const char* const*)val;
   size_t len = strlen(str);
   CWISS_FxHash_State state = 0;
   CWISS_FxHash_Write(&state, str, len);
   return state;
 }
 static inline bool kCStrPolicy_eq(const void* a, const void* b) {
-  const char* ap = *(const char**)a;
-  const char* bp = *(const char**)b;
+  const char* ap = *(const char* const*)a;
+  const char* bp = *(const char* const*)b;
   return strcmp(ap, bp) == 0;
 }
 

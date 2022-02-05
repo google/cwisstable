@@ -59,7 +59,7 @@ void BM_CacheInSteadyState(benchmark::State& state) {
     auto x = t.emplace(gen(rng));
     if (x.second) keys.push_back(*x.first);
   }
-  CWISS_CHECK(state.range(0) >= 10, "");
+  CWISS_CHECK(state.range(0) >= 10, "n/a");
   while (state.KeepRunning()) {
     // Some cache hits.
     std::deque<std::string>::const_iterator it;
@@ -69,7 +69,7 @@ void BM_CacheInSteadyState(benchmark::State& state) {
     }
     // Some cache misses.
     for (int i = 0; i != 10; ++i) ::benchmark::DoNotOptimize(t.find(gen(rng)));
-    CWISS_CHECK(t.erase(keys.front()), keys.front().c_str());
+    CWISS_CHECK(t.erase(keys.front()), keys.front().c_str(), "n/a");
     keys.pop_front();
     while (true) {
       auto x = t.emplace(gen(rng));

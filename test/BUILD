@@ -12,13 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load(
+    "//:copts.bzl",
+    "CWISS_DEFAULT_COPTS",
+    "CWISS_DEFAULT_LINKOPTS",
+    "CWISS_TEST_COPTS",
+    "CWISS_C_VERSION",
+    "CWISS_CXX_VERSION",
+)
+
 cc_library(
     name = "wrappers",
     hdrs = ["wrappers.h"],
     deps = ["//:unified"],
-    copts = [
-      "-std=c++17",
-    ],
+    copts = CWISS_DEFAULT_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
 )
 
 cc_test(
@@ -35,10 +43,8 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
-    copts = [
-      "-std=c++17",
-      #"-DSWISS_HAVE_SSE2=0",
-    ],
+    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
 )
 
 cc_binary(
@@ -55,8 +61,6 @@ cc_binary(
         "@com_google_absl//absl/strings:str_format",
         "@com_github_google_benchmark//:benchmark_main",
     ],
-    copts = [
-      "-std=c++17",
-      #"-DSWISS_HAVE_SSE2=0",
-    ],
+    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
 )

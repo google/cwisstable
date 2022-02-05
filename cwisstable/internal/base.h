@@ -75,18 +75,29 @@
 #define CWISS_IS_GCC (CWISS_IS_GCCISH && !CWISS_IS_CLANG)
 #define CWISS_IS_MSVC (CWISS_IS_MSVCISH && !CWISS_IS_CLANG)
 
+
+#define CWISS_PRAGMA_(pragma_) _Pragma(#pragma_)
+
+#if CWISS_IS_GCCISH
+  #define CWISS_GCC_PUSH_ CWISS_PRAGMA_(GCC diagnostic push)
+  #define CWISS_GCC_ALLOW_(w_) CWISS_PRAGMA_(GCC diagnostic ignored w_)
+  #define CWISS_GCC_POP_ CWISS_PRAGMA_(GCC diagnostic pop)
+#else
+  #define CWISS_GCC_PUSH_
+  #define CWISS_GCC_ALLOW_(warning)
+  #define CWISS_GCC_POP_
+#endif
+
 /// Warning control around `CWISS` symbol definitions. These macros will
 /// disable certain false-positive warnings that `CWISS` definitions tend to
 /// emit.
-#if CWISS_IS_GCCISH
-  #define CWISS_BEGIN_             \
-    _Pragma("GCC diagnostic push") \
-        _Pragma("GCC diagnostic ignored \"-Wunused-function\"")
-  #define CWISS_END_ _Pragma("GCC diagnostic pop")
-#else
-  #define CWISS_BEGIN_
-  #define CWISS_END_
-#endif
+#define CWISS_BEGIN_                     \
+  CWISS_GCC_PUSH_                        \
+  CWISS_GCC_ALLOW_("-Wunused-function")  \
+  CWISS_GCC_ALLOW_("-Wunused-parameter") \
+  CWISS_GCC_ALLOW_("-Wcast-qual")        \
+  CWISS_GCC_ALLOW_("-Wmissing-field-initializers")
+#define CWISS_END_ CWISS_GCC_POP_
 
 /// `CWISS_HAVE_SSE2` is nonzero if we have SSE2 support.
 ///
