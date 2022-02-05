@@ -33,7 +33,7 @@ generating the file doesn't require installing Bazel; all you need is Python:
 
 ```sh
 git clone https://github.com/google/cwisstable.git && cd cwisstable
-./unify.py cwisstable/*.h
+./unify.py
 ```
 
 This will output a `cwisstable.h` file that you can vendor in; the checkout
