@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CWISSTABLE_CAPACITY_H_
-#define CWISSTABLE_CAPACITY_H_
+#ifndef CWISSTABLE_INTERNAL_CAPACITY_H_
+#define CWISSTABLE_INTERNAL_CAPACITY_H_
 
 #include <limits.h>
 #include <stdbool.h>
@@ -21,8 +21,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cwisstable/base.h"
-#include "cwisstable/ctrl.h"
+#include "cwisstable/internal/base.h"
+#include "cwisstable/internal/ctrl.h"
 
 /// Capacity, load factor, and allocation size computations for a SwissTable.
 ///
@@ -236,4 +236,4 @@ static inline bool CWISS_is_small(size_t capacity) {
 CWISS_END_EXTERN_
 CWISS_END_
 
-#endif  // CWISSTABLE_CAPACITY_H_
+#endif  // CWISSTABLE_INTERNAL_CAPACITY_H_

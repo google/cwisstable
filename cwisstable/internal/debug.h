@@ -24,8 +24,8 @@
 // performs well in one hash table implementation does not necessarily performs
 // well in a different one.
 
-#ifndef CWISSTABLE_DEBUG_H_
-#define CWISSTABLE_DEBUG_H_
+#ifndef CWISSTABLE_INTERNAL_DEBUG_H_
+#define CWISSTABLE_INTERNAL_DEBUG_H_
 
 #include <cstddef>
 #include <vector>
@@ -65,4 +65,4 @@ struct HashtableDebugProbeSummary {
 HashtableDebugProbeSummary GetHashtableDebugProbeSummary(
     const CWISS_Policy* policy, const CWISS_RawHashSet* set);
 }  // namespace cwisstable::internal
-#endif  // CWISSTABLE_DEBUG_H_
+#endif  // CWISSTABLE_INTERNAL_DEBUG_H_
