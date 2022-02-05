@@ -27,6 +27,7 @@ filegroup(
         "cwisstable/bits.h",
         "cwisstable/capacity.h",
         "cwisstable/ctrl.h",
+        "cwisstable/extract.h",
         "cwisstable/probe.h",
         "cwisstable/raw_hash_set.h",
     ],
