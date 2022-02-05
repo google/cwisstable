@@ -42,6 +42,59 @@ and generation step is only necessary for upgrading the header.
 That said, if you're writing C++, this library is very much not for you.
 Please use https://github.com/abseil/abseil-cpp instead!
 
+## Using It
+
+To use `cwisstable`, include `cwisstable.h` and use the code-generating macros
+to create a new map type:
+
+```c
+#include "cwisstable.h"
+
+CWISS_DECLARE_FLAT_HASHSET(MyIntSet, int);
+
+int main(void) {
+  MyIntSet set = MyIntSet_new(8);
+
+  for (int i = 0; i < 8; ++i) {
+    int val = i * i + 1;
+    MyIntSet_insert(&set, &val);
+  }
+
+  int k = 4;
+  assert(!MyIntSet_contains(&set, &k));
+}
+```
+
+[`cwisstable/declare.h`](cwisstable/declare.h) has a detailed description of
+these macros and their generated API.
+
+[`cwisstable/policy.h`](cwisstable/policy.h) describes how to use hash table
+policies to define more complex sets and maps.
+[`examples/stringmap.c`](examples/stringmap.c) shows this in action!
+
+## Compatibility Warnings
+
+We don't version `cwisstable.h`; instead, users are expected to vendor the
+unified file into their projects and manually update it; `cwisstable`'s
+distribution method (or, lack of one) is intended to eliminate all friction to
+its use in traditional C projects.
+
+That said, we do not provide any kind of ABI or API stability from one revision
+to another that would allow `cwisstable.h` to appear in another library's public
+headers. You must not, under any circumstances, expose this header in your
+public headers. Doing so may clash with _another_ project making the same
+mistake, and potentially destroy compile times due to the enormous number of
+inline functions generated in every translation unit.
+
+Including `cwisstable.h` into a public header will also cause it to become part
+of _your_ API, due to [Hyrum's Law](https://www.hyrumslaw.com/), even if our
+types do not appear in your interfaces. Such a mistake may be difficult to
+unwind, and we will not provide support for it.
+
+The *intended* use of `cwisstable.h` is that it will either be included directly
+into your `.c` files, or a private `.h` file that declares common table types
+which is then includes in your `.c` files.
+
 ---
 
 This is not an officially supported Google product.
