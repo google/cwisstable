@@ -266,59 +266,71 @@ typedef struct {
 
 // ---- PUBLIC API ENDS HERE! ----
 
-#define CWISS_DECLARE_POLICY_(kPolicy_, Type_, Key_, ...)                    \
-  CWISS_BEGIN_                                                               \
-  static inline void kPolicy_##_DefaultCopy(void* dst, const void* src) {    \
-    memcpy(dst, src, sizeof(Type_));                                         \
-  }                                                                          \
-  static inline size_t kPolicy_##_DefaultHash(const void* val) {             \
-    CWISS_FxHash_State state = 0;                                            \
-    CWISS_FxHash_Write(&state, val, sizeof(Key_));                           \
-    return state;                                                            \
-  }                                                                          \
-  static inline bool kPolicy_##_DefaultEq(const void* a, const void* b) {    \
-    return memcmp(a, b, sizeof(Key_)) == 0;                                  \
-  }                                                                          \
-  static inline void kPolicy_##_DefaultSlotInit(void* slot) {}               \
-  static inline void kPolicy_##_DefaultSlotTransfer(void* dst, void* src) {  \
-    memcpy(dst, src, sizeof(Type_));                                         \
-  }                                                                          \
-  static inline void* kPolicy_##_DefaultSlotGet(void* slot) { return slot; } \
-  static inline void kPolicy_##_DefaultSlotDtor(void* slot) {                \
-    if (CWISS_EXTRACT(obj_dtor, NULL, __VA_ARGS__) != NULL) {                \
-      CWISS_EXTRACT(obj_dtor, (void (*)(void*))NULL, __VA_ARGS__)(slot);     \
-    }                                                                        \
-  }                                                                          \
-                                                                             \
-  static const CWISS_ObjectPolicy kPolicy_##_ObjectPolicy = {                \
-      sizeof(Type_),                                                         \
-      alignof(Type_),                                                        \
-      CWISS_EXTRACT(obj_copy, kPolicy_##_DefaultCopy, __VA_ARGS__),          \
-      CWISS_EXTRACT(obj_dtor, NULL, __VA_ARGS__),                            \
-  };                                                                         \
-  static const CWISS_KeyPolicy kPolicy_##_KeyPolicy = {                      \
-      CWISS_EXTRACT(key_hash, kPolicy_##_DefaultHash, __VA_ARGS__),          \
-      CWISS_EXTRACT(key_eq, kPolicy_##_DefaultEq, __VA_ARGS__),              \
-  };                                                                         \
-  static const CWISS_AllocPolicy kPolicy_##_AllocPolicy = {                  \
-      CWISS_EXTRACT(alloc_alloc, CWISS_DefaultMalloc, __VA_ARGS__),          \
-      CWISS_EXTRACT(alloc_free, CWISS_DefaultFree, __VA_ARGS__),             \
-  };                                                                         \
-  static const CWISS_SlotPolicy kPolicy_##_SlotPolicy = {                    \
-      CWISS_EXTRACT(slot_size, sizeof(Type_), __VA_ARGS__),                  \
-      CWISS_EXTRACT(slot_align, sizeof(Type_), __VA_ARGS__),                 \
-      CWISS_EXTRACT(slot_init, kPolicy_##_DefaultSlotInit, __VA_ARGS__),     \
-      CWISS_EXTRACT(slot_dtor, kPolicy_##_DefaultSlotDtor, __VA_ARGS__),     \
-      CWISS_EXTRACT(slot_transfer, kPolicy_##_DefaultSlotTransfer,           \
-                    __VA_ARGS__),                                            \
-      CWISS_EXTRACT(slot_get, kPolicy_##_DefaultSlotGet, __VA_ARGS__),       \
-  };                                                                         \
-  CWISS_END_                                                                 \
-  static const CWISS_Policy kPolicy_ = {                                     \
-      &kPolicy_##_ObjectPolicy,                                              \
-      &kPolicy_##_KeyPolicy,                                                 \
-      &kPolicy_##_AllocPolicy,                                               \
-      &kPolicy_##_SlotPolicy,                                                \
+#define CWISS_DECLARE_POLICY_(kPolicy_, Type_, Key_, ...)                \
+  CWISS_BEGIN_                                                           \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  inline void kPolicy_##_DefaultCopy(void* dst, const void* src) {       \
+    memcpy(dst, src, sizeof(Type_));                                     \
+  }                                                                      \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  inline size_t kPolicy_##_DefaultHash(const void* val) {                \
+    CWISS_FxHash_State state = 0;                                        \
+    CWISS_FxHash_Write(&state, val, sizeof(Key_));                       \
+    return state;                                                        \
+  }                                                                      \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  inline bool kPolicy_##_DefaultEq(const void* a, const void* b) {       \
+    return memcmp(a, b, sizeof(Key_)) == 0;                              \
+  }                                                                      \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  inline void kPolicy_##_DefaultSlotInit(void* slot) {}                  \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  inline void kPolicy_##_DefaultSlotTransfer(void* dst, void* src) {     \
+    memcpy(dst, src, sizeof(Type_));                                     \
+  }                                                                      \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  inline void* kPolicy_##_DefaultSlotGet(void* slot) { return slot; }    \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  inline void kPolicy_##_DefaultSlotDtor(void* slot) {                   \
+    if (CWISS_EXTRACT(obj_dtor, NULL, __VA_ARGS__) != NULL) {            \
+      CWISS_EXTRACT(obj_dtor, (void (*)(void*))NULL, __VA_ARGS__)(slot); \
+    }                                                                    \
+  }                                                                      \
+                                                                         \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  const CWISS_ObjectPolicy kPolicy_##_ObjectPolicy = {                   \
+      sizeof(Type_),                                                     \
+      alignof(Type_),                                                    \
+      CWISS_EXTRACT(obj_copy, kPolicy_##_DefaultCopy, __VA_ARGS__),      \
+      CWISS_EXTRACT(obj_dtor, NULL, __VA_ARGS__),                        \
+  };                                                                     \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  const CWISS_KeyPolicy kPolicy_##_KeyPolicy = {                         \
+      CWISS_EXTRACT(key_hash, kPolicy_##_DefaultHash, __VA_ARGS__),      \
+      CWISS_EXTRACT(key_eq, kPolicy_##_DefaultEq, __VA_ARGS__),          \
+  };                                                                     \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  const CWISS_AllocPolicy kPolicy_##_AllocPolicy = {                     \
+      CWISS_EXTRACT(alloc_alloc, CWISS_DefaultMalloc, __VA_ARGS__),      \
+      CWISS_EXTRACT(alloc_free, CWISS_DefaultFree, __VA_ARGS__),         \
+  };                                                                     \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  const CWISS_SlotPolicy kPolicy_##_SlotPolicy = {                       \
+      CWISS_EXTRACT(slot_size, sizeof(Type_), __VA_ARGS__),              \
+      CWISS_EXTRACT(slot_align, sizeof(Type_), __VA_ARGS__),             \
+      CWISS_EXTRACT(slot_init, kPolicy_##_DefaultSlotInit, __VA_ARGS__), \
+      CWISS_EXTRACT(slot_dtor, kPolicy_##_DefaultSlotDtor, __VA_ARGS__), \
+      CWISS_EXTRACT(slot_transfer, kPolicy_##_DefaultSlotTransfer,       \
+                    __VA_ARGS__),                                        \
+      CWISS_EXTRACT(slot_get, kPolicy_##_DefaultSlotGet, __VA_ARGS__),   \
+  };                                                                     \
+  CWISS_END_                                                             \
+  CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
+  const CWISS_Policy kPolicy_ = {                                        \
+      &kPolicy_##_ObjectPolicy,                                          \
+      &kPolicy_##_KeyPolicy,                                             \
+      &kPolicy_##_AllocPolicy,                                           \
+      &kPolicy_##_SlotPolicy,                                            \
   }
 
 #define CWISS_DECLARE_NODE_FUNCTIONS_(kPolicy_, Type_, ...)                    \

@@ -241,10 +241,11 @@ CWISS_BEGIN_EXTERN_
   static inline HashSet_##_CIter HashSet_##_citer(const HashSet_* self) {      \
     return (HashSet_##_CIter){CWISS_RawHashSet_citer(&kPolicy_, &self->set_)}; \
   }                                                                            \
-  static inline const Type_* HashSet_##_CIter_get(const HashSet_##_Iter* it) { \
+  static inline const Type_* HashSet_##_CIter_get(                             \
+      const HashSet_##_CIter* it) {                                            \
     return (const Type_*)CWISS_RawIter_get(&kPolicy_, &it->it_);               \
   }                                                                            \
-  static inline const Type_* HashSet_##_CIter_next(HashSet_##_Iter* it) {      \
+  static inline const Type_* HashSet_##_CIter_next(HashSet_##_CIter* it) {     \
     return (const Type_*)CWISS_RawIter_next(&kPolicy_, &it->it_);              \
   }                                                                            \
   static inline HashSet_##_CIter HashSet_##_Iter_const(HashSet_##_Iter it) {   \
