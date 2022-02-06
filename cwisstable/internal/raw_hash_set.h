@@ -631,7 +631,8 @@ static inline CWISS_RawHashSet CWISS_RawHashSet_dup(
   // `CWISS_RawHashSet_rehash_and_grow_if_necessary()` because we are already
   // big enough (since `self` is a priori) and tombstones cannot be created
   // during this process.
-  for (CWISS_RawIter iter = CWISS_RawHashSet_citer(policy, self); CWISS_RawIter_get(policy, &iter); CWISS_RawIter_next(policy, &iter)) {
+  for (CWISS_RawIter iter = CWISS_RawHashSet_citer(policy, self);
+       CWISS_RawIter_get(policy, &iter); CWISS_RawIter_next(policy, &iter)) {
     void* v = CWISS_RawIter_get(policy, &iter);
     size_t hash = policy->key->hash(v);
 

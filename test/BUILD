@@ -60,8 +60,8 @@ cc_test(
     srcs = ["cwisstable_test.cc"],
     deps = [
         ":test_helpers",
-        "//:unified",
         "//:debug",
+        "//:unified",
 
         "@com_google_absl//absl/cleanup",
         "@com_google_googletest//:gtest_main",
@@ -86,4 +86,22 @@ cc_binary(
     ],
     copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
+)
+
+cc_binary(
+    name = "cwisstable_benchmark",
+    srcs = ["cwisstable_benchmark.cc"],
+    tags = ["benchmark"],
+    deps = [
+        ":test_helpers",
+        "//:debug",
+        "//:unified",
+        
+        "@com_google_absl//absl/cleanup",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+    testonly = 1,
 )

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // absl::raw_hash_set's tests ported to run over cwisstable's syntax.
-// 
+//
 // Commented out tests are tests we have yet to port.
 
 #include "cwisstable.h"
@@ -27,13 +27,14 @@
 
 #include "absl/cleanup/cleanup.h"
 #include "cwisstable/internal/debug.h"
-#include "test/test_helpers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "test/test_helpers.h"
 
 namespace cwisstable {
 namespace {
 
+using ::cwisstable::internal::GetHashtableDebugNumProbes;
 using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::Eq;
@@ -42,7 +43,6 @@ using ::testing::IsEmpty;
 using ::testing::Lt;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
-using ::cwisstable::internal::GetHashtableDebugNumProbes;
 
 TEST(Util, NormalizeCapacity) {
   EXPECT_EQ(1, CWISS_NormalizeCapacity(0));
@@ -322,20 +322,9 @@ TEST(Group, CountLeadingEmptyOrDeleted) {
   }
 }
 
-struct HashStdString {
-  template <typename S>
-  size_t operator()(const S& s) {
-    CWISS_FxHash_State state = 0;
-    size_t size = s.size();
-    CWISS_FxHash_Write(&state, &size, sizeof(size_t));
-    CWISS_FxHash_Write(&state, s.data(), s.size());
-    return state;
-  }
-};
-
 CWISS_DECLARE_HASHSET_WITH(StringTable, std::string,
                            (FlatPolicy<std::string, HashStdString>()));
-CWISS_DECLARE_HASHSET_WITH(IntTable, int, FlatPolicy<int>());
+CWISS_DECLARE_HASHSET_WITH(IntTable, int64_t, FlatPolicy<int64_t>());
 
 TABLE_HELPERS(StringTable);
 TABLE_HELPERS(IntTable);
@@ -369,14 +358,14 @@ TEST(Table, Empty) {
 TEST(Table, LookupEmpty) {
   auto t = IntTable_new(0);
   absl::Cleanup c_ = [&] { IntTable_destroy(&t); };
-  
+
   EXPECT_FALSE(Find(t, 0));
 }
 
 TEST(Table, Insert1) {
   auto t = IntTable_new(0);
   absl::Cleanup c_ = [&] { IntTable_destroy(&t); };
-  
+
   EXPECT_FALSE(Find(t, 0));
 
   auto [val1, inserted1] = Insert(t, 0);
@@ -390,7 +379,7 @@ TEST(Table, Insert1) {
 TEST(Table, Insert2) {
   auto t = IntTable_new(0);
   absl::Cleanup c_ = [&] { IntTable_destroy(&t); };
-  
+
   EXPECT_FALSE(Find(t, 0));
 
   auto [val1, inserted1] = Insert(t, 0);
@@ -412,7 +401,7 @@ TEST(Table, Insert2) {
 TEST(Table, InsertCollision) {
   auto t = BadTable_new(0);
   absl::Cleanup c_ = [&] { BadTable_destroy(&t); };
-  
+
   EXPECT_FALSE(Find(t, 0));
 
   auto [val1, inserted1] = Insert(t, 0);
@@ -495,7 +484,7 @@ TEST(Table, InsertWithinCapacity) {
 TEST(Table, LazyEmplace) {
   auto t = StringTable_new(0);
   absl::Cleanup c_ = [&] { StringTable_destroy(&t); };
-  
+
   std::string_view sv = "abc";
   auto res = StringTable_deferred_insert_by_View(&t, &sv);
   EXPECT_TRUE(res.inserted);
@@ -512,7 +501,7 @@ TEST(Table, ContainsEmpty) {
   auto t = IntTable_new(0);
   absl::Cleanup c_ = [&] { IntTable_destroy(&t); };
 
-  int k0 = 0;
+  int64_t k0 = 0;
   EXPECT_FALSE(IntTable_contains(&t, &k0));
 }
 
@@ -520,7 +509,7 @@ TEST(Table, Contains1) {
   auto t = IntTable_new(0);
   absl::Cleanup c_ = [&] { IntTable_destroy(&t); };
 
-  int k0 = 0, k1 = 1;
+  int64_t k0 = 0, k1 = 1;
   EXPECT_THAT(Insert(t, 0), Pair(_, true));
   EXPECT_TRUE(IntTable_contains(&t, &k0));
   EXPECT_FALSE(IntTable_contains(&t, &k1));
@@ -533,7 +522,7 @@ TEST(Table, Contains2) {
   auto t = IntTable_new(0);
   absl::Cleanup c_ = [&] { IntTable_destroy(&t); };
 
-  int k0 = 0, k1 = 1;
+  int64_t k0 = 0, k1 = 1;
   EXPECT_THAT(Insert(t, 0), Pair(_, true));
   EXPECT_TRUE(IntTable_contains(&t, &k0));
   EXPECT_FALSE(IntTable_contains(&t, &k1));
@@ -881,10 +870,10 @@ TEST(Table, CopyConstruct) {
 
   Insert(t, 0);
   EXPECT_EQ(IntTable_size(&t), 1);
-  
+
   auto u = IntTable_dup(&t);
   absl::Cleanup c2_ = [&] { IntTable_destroy(&u); };
-  
+
   EXPECT_EQ(IntTable_size(&u), 1);
   EXPECT_EQ(*Find(u, 0), 0);
 }
@@ -1029,11 +1018,11 @@ TEST(Table, IterationOrderChangesByInstance) {
 
 TEST(Table, IterationOrderChangesOnRehash) {
   std::vector<IntTable> garbage;
-    absl::Cleanup c_ = [&] {
-      for (auto& t : garbage) {
-        IntTable_destroy(&t);
-      }
-    };
+  absl::Cleanup c_ = [&] {
+    for (auto& t : garbage) {
+      IntTable_destroy(&t);
+    }
+  };
 
   for (int i = 0; i < 5000; ++i) {
     auto t = MakeSimpleTable(20);
