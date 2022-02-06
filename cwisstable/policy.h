@@ -124,15 +124,40 @@ typedef struct {
 ///
 /// This type describes the necessary information for putting a value into a
 /// hash table.
+///
+/// A *heterogenous* key policy is one whose equality function expects different
+/// argument types, which can be used for so-called heterogenous lookup: finding
+/// an element of a table by comparing it to a somewhat different type. If the
+/// table element is, for example, a `std::string`[1]-like type, it could still
+/// be found via a non-owning version like a `std::string_view`[2]. This is
+/// important for making efficient use of a SwissTable.
+///
+/// [1]: For non C++ programmers: a growable string type implemented as a
+///      `struct { char* ptr; size_t size, capacity; }`.
+/// [2]: Similarly, a `std::string_view` is a pointer-length pair to a string
+///      *somewhere*; unlike a C-style string, it might be a substring of a
+///      larger allocation elsewhere.
 typedef struct {
   /// Computes the hash of a value.
   ///
   /// This function must be such that if two elements compare equal, they must
   /// have the same hash (but not vice-versa).
+  ///
+  /// If this policy is heterogenous, this function must be defined so that
+  /// given the original key policy of the table's element type, if
+  /// `hetero->eq(a, b)` holds, then `hetero->hash(a) == original->hash(b)`.
+  /// In other words, the obvious condition for a hash table to work correctly
+  /// with this policy.
   size_t (*hash)(const void* val);
 
   /// Compares two values for equality.
-  bool (*eq)(const void* a, const void* b);
+  ///
+  /// This function is actually not symmetric: the first argument will always be
+  /// the value being searched for, and the second will be a pointer to the
+  /// candidate entry. In particular, this means they can be different types:
+  /// in C++ parlance, `needle` could be a `std::string_view`, while `candidate`
+  /// could be a `std::string`.
+  bool (*eq)(const void* needle, const void* candidate);
 } CWISS_KeyPolicy;
 
 /// A policy for allocation.

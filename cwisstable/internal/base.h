@@ -75,7 +75,6 @@
 #define CWISS_IS_GCC (CWISS_IS_GCCISH && !CWISS_IS_CLANG)
 #define CWISS_IS_MSVC (CWISS_IS_MSVCISH && !CWISS_IS_CLANG)
 
-
 #define CWISS_PRAGMA_(pragma_) _Pragma(#pragma_)
 
 #if CWISS_IS_GCCISH
