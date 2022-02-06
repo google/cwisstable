@@ -29,7 +29,7 @@
 // CWISS_DECLARE_FLAT_HASHMAP(MyMap, K, V) expands to:
 
 /// Returns the policy used with this map type.
-static inline const CWISS_Policy* MyMap_policy();
+static inline const CWISS_Policy* MyMap_policy(void);
 
 /// The generated type.
 typedef struct {
@@ -155,10 +155,32 @@ typedef struct {
   bool inserted;
 } MyMap_Insert;
 
-/// Inserts `val` into the map if it isn't already present. Returns an
-/// iterator pointing to the element in the map and whether it was just
-/// inserted or was already present.
-static inline MyMap_Insert MyMap_insert(MyMap* self, MyMap_Entry* val);
+/// Inserts `val` into the map if it isn't already present, initializing it by
+/// copy.
+///
+/// Returns an iterator pointing to the element in the map and whether it was
+/// just inserted or was already present.
+static inline MyMap_Insert MyMap_insert(MyMap* self, const MyMap_Entry* val);
+
+/// "Inserts" `val` into the table if it isn't already present.
+///
+/// This function does not perform insertion; it behaves exactly like
+/// `MyMap_insert()` up until it would copy-initialize the new
+/// element, instead returning a valid iterator pointing to uninitialized data.
+///
+/// This allows, for example, lazily constructing the parts of the element that
+/// do not figure into the hash or equality. The initialized element must have
+/// the same hash value and must compare equal to the value used for the initial
+/// lookup; UB may otherwise result.
+///
+/// If this function returns `true` in `inserted`, the caller has *no choice*
+/// but to insert, i.e., they may not change their minds at that point.
+static inline MyMap_Insert MyMap_deferred_insert(MyMap* self, const K* key);
+
+/// Looks up `key` and erases it from the map.
+///
+/// Returns `true` if erasure happened.
+static inline bool MyMap_erase(MyMap* self, const K* key);
 
 /// Erases (and destroys) the element pointed to by `it`.
 ///
@@ -167,15 +189,10 @@ static inline MyMap_Insert MyMap_insert(MyMap* self, MyMap_Entry* val);
 /// advanced (although not dereferenced until advanced).
 static inline void MyMap_erase_at(MyMap_Iter it);
 
-/// Looks up `key` and erases it from the map.
-///
-/// Returns `true` if erasure happened.
-static inline bool MyMap_erase(MyMap* self, const K* key);
-
 // CWISS_DECLARE_LOOKUP(MyMap, View) expands to:
 
 /// Returns the policy used with this lookup extension.
-static inline const CWISS_KeyPolicy* MyMap_View_policy();
+static inline const CWISS_KeyPolicy* MyMap_View_policy(void);
 
 /// Checks if this map contains the given element.
 ///
@@ -212,6 +229,22 @@ static inline MyMap_CIter MyMap_cfind_hinted_by_View(const MyMap* self,
 /// This function does not trigger rehashes.
 static inline MyMap_Iter MyMap_find_hinted_by_View(MyMap* self, const View* key,
                                                    size_t hash);
+
+/// "Inserts" `key` into the table if it isn't already present.
+///
+/// This function does not perform insertion; it behaves exactly like
+/// `MyMap_insert()` up until it would copy-initialize the new
+/// element, instead returning a valid iterator pointing to uninitialized data.
+///
+/// This allows, for example, lazily constructing the parts of the element that
+/// do not figure into the hash or equality. The initialized element must have
+/// the same hash value and must compare equal to the value used for the initial
+/// lookup; UB may otherwise result.
+///
+/// If this function returns `true` in `inserted`, the caller has *no choice*
+/// but to insert, i.e., they may not change their minds at that point.
+static inline MyMap_Insert MyMap_deferred_insert_by_View(MySet* self,
+                                                         const View* key);
 
 /// Looks up `key` and erases it from the map.
 ///

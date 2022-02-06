@@ -144,6 +144,13 @@ CWISS_BEGIN_EXTERN_
     return &HashSet_##_##LookupName_##_kPolicy;                                \
   }                                                                            \
                                                                                \
+  static inline HashSet_##_Insert HashSet_##_deferred_insert_by_##LookupName_( \
+      HashSet_* self, const Key_* key) {                                       \
+    CWISS_Insert ret = CWISS_RawHashSet_deferred_insert(                       \
+        HashSet_##_policy(), &HashSet_##_##LookupName_##_kPolicy, &self->set_, \
+        key);                                                                  \
+    return (HashSet_##_Insert){{ret.iter}, ret.inserted};                      \
+  }                                                                            \
   static inline HashSet_##_CIter HashSet_##_cfind_hinted_by_##LookupName_(     \
       const HashSet_* self, const Key_* key, size_t hash) {                    \
     return (HashSet_##_CIter){CWISS_RawHashSet_find_hinted(                    \
@@ -269,8 +276,14 @@ CWISS_BEGIN_EXTERN_
     HashSet_##_Iter iter;                                                      \
     bool inserted;                                                             \
   } HashSet_##_Insert;                                                         \
+  static inline HashSet_##_Insert HashSet_##_deferred_insert(                  \
+      HashSet_* self, const Key_* key) {                                       \
+    CWISS_Insert ret = CWISS_RawHashSet_deferred_insert(                       \
+        &kPolicy_, kPolicy_.key, &self->set_, key);                            \
+    return (HashSet_##_Insert){{ret.iter}, ret.inserted};                      \
+  }                                                                            \
   static inline HashSet_##_Insert HashSet_##_insert(HashSet_* self,            \
-                                                    Type_* val) {              \
+                                                    const Type_* val) {        \
     CWISS_Insert ret = CWISS_RawHashSet_insert(&kPolicy_, &self->set_, val);   \
     return (HashSet_##_Insert){{ret.iter}, ret.inserted};                      \
   }                                                                            \
