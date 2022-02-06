@@ -149,10 +149,32 @@ typedef struct {
   bool inserted;
 } MySet_Insert;
 
-/// Inserts `val` into the set if it isn't already present. Returns an
-/// iterator pointing to the element in the set and whether it was just
-/// inserted or was already present.
-static inline MySet_Insert MySet_insert(MySet* self, T* val);
+/// Inserts `val` into the map if it isn't already present, initializing it by
+/// copy.
+///
+/// Returns an iterator pointing to the element in the map and whether it was
+/// just inserted or was already present.
+static inline MySet_Insert MySet_insert(MySet* self, const T* val);
+
+/// "Inserts" `key` into the table if it isn't already present.
+///
+/// This function does not perform insertion; it behaves exactly like
+/// `MyMap_insert()` up until it would copy-initialize the new
+/// element, instead returning a valid iterator pointing to uninitialized data.
+///
+/// This allows, for example, lazily constructing the parts of the element that
+/// do not figure into the hash or equality. The initialized element must have
+/// the same hash value and must compare equal to the value used for the initial
+/// lookup; UB may otherwise result.
+///
+/// If this function returns `true` in `inserted`, the caller has *no choice*
+/// but to insert, i.e., they may not change their minds at that point.
+static inline MyMap_Insert MyMap_deferred_insert(MySet* self, const T* key);
+
+/// Looks up `key` and erases it from the set.
+///
+/// Returns `true` if erasure happened.
+static inline bool MySet_erase(MySet* self, const T* key);
 
 /// Erases (and destroys) the element pointed to by `it`.
 ///
@@ -160,11 +182,6 @@ static inline MySet_Insert MySet_insert(MySet* self, T* val);
 /// not trigger rehashes and the erased iterator can still be safely
 /// advanced (although not dereferenced until advanced).
 static inline void MySet_erase_at(MySet_Iter it);
-
-/// Looks up `key` and erases it from the set.
-///
-/// Returns `true` if erasure happened.
-static inline bool MySet_erase(MySet* self, const T* key);
 
 // CWISS_DECLARE_LOOKUP(MySet, View) expands to:
 
@@ -206,6 +223,22 @@ static inline MySet_CIter MySet_cfind_hinted_by_View(const MySet* self,
 /// This function does not trigger rehashes.
 static inline MySet_Iter MySet_find_hinted_by_View(MySet* self, const View* key,
                                                    size_t hash);
+
+/// "Inserts" `key` into the set if it isn't already present.
+///
+/// This function does not perform insertion; it behaves exactly like
+/// `MySet_insert()` up until it would copy-initialize the new
+/// element, instead returning a valid iterator pointing to uninitialized data.
+///
+/// This allows, for example, lazily constructing the parts of the element that
+/// do not figure into the hash or equality. The initialized element must have
+/// the same hash value and must compare equal to the value used for the initial
+/// lookup; UB may otherwise result.
+///
+/// If this function returns `true` in `inserted`, the caller has *no choice*
+/// but to insert, i.e., they may not change their minds at that point.
+static inline MySet_Insert MySet_deferred_insert_by_View(MySet* self,
+                                                         const View* key);
 
 /// Looks up `key` and erases it from the map.
 ///

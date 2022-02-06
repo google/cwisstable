@@ -40,6 +40,20 @@ typedef struct {
 
 static IntArray IntArray_new(void) { return (IntArray){0}; }
 
+static IntArray IntArray_from_view(IntView view) {
+  // This is still private API even if it's used in examples. :)
+  uint32_t width = CWISS_BitWidth(view.len);
+  uint32_t cap = (((size_t)1) << width) - 1;
+
+  IntArray array = {
+      malloc(cap * sizeof(int)),
+      view.len,
+      cap,
+  };
+  memcpy(array.ptr, view.ptr, view.len * sizeof(int));
+  return array;
+}
+
 static IntArray IntArray_dup(const IntArray* self) {
   IntArray array = {
       malloc(self->cap * sizeof(int)),
@@ -180,6 +194,12 @@ int main(void) {
 
   MyArrayMap_erase_by_IntView(&map, &k);
   assert(!MyArrayMap_contains_by_IntView(&map, &k));
+
+  MyArrayMap_Insert in = MyArrayMap_deferred_insert_by_IntView(&map, &k);
+  assert(in.inserted);
+  v = MyArrayMap_Iter_get(&in.iter);
+  v->key = IntArray_from_view(k);
+  v->val = 42;
 
   printf("entries:\n");
   it = MyArrayMap_iter(&map);

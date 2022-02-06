@@ -525,7 +525,7 @@ static inline void CWISS_RawHashSet_prefetch(const CWISS_Policy* policy,
 /// The return type of `CWISS_RawHashSet_prepare_insert()`.
 typedef struct {
   size_t index;
-  bool insert;
+  bool inserted;
 } CWISS_PrepareInsert;
 
 /// Given the hash of a value not currently in the table, finds the next viable
@@ -554,9 +554,10 @@ static size_t CWISS_RawHashSet_prepare_insert(const CWISS_Policy* policy,
 /// Attempts to find `key` in the table; if it isn't found, returns where to
 /// insert it, instead.
 static inline CWISS_PrepareInsert CWISS_RawHashSet_find_or_prepare_insert(
-    const CWISS_Policy* policy, CWISS_RawHashSet* self, const void* key) {
+    const CWISS_Policy* policy, const CWISS_KeyPolicy* key_policy,
+    CWISS_RawHashSet* self, const void* key) {
   CWISS_RawHashSet_prefetch_heap_block(policy, self);
-  size_t hash = policy->key->hash(key);
+  size_t hash = key_policy->hash(key);
   CWISS_probe_seq seq = CWISS_probe(self->ctrl_, hash, self->capacity_);
   while (true) {
     CWISS_Group g = CWISS_Group_new(self->ctrl_ + seq.offset_);
@@ -565,7 +566,7 @@ static inline CWISS_PrepareInsert CWISS_RawHashSet_find_or_prepare_insert(
     while (CWISS_BitMask_next(&match, &i)) {
       size_t idx = CWISS_probe_seq_offset(&seq, i);
       char* slot = self->slots_ + idx * policy->slot->size;
-      if (CWISS_LIKELY(policy->key->eq(policy->slot->get(slot), key)))
+      if (CWISS_LIKELY(key_policy->eq(key, policy->slot->get(slot))))
         return (CWISS_PrepareInsert){idx, false};
     }
     if (CWISS_LIKELY(CWISS_Group_MatchEmpty(&g).mask)) break;
@@ -576,20 +577,16 @@ static inline CWISS_PrepareInsert CWISS_RawHashSet_find_or_prepare_insert(
       CWISS_RawHashSet_prepare_insert(policy, self, hash), true};
 }
 
-/// Inserts `v` at the index `i`.
+/// Prepares a slot to insert an element into.
 ///
 /// This function does all the work of calling the appropriate policy functions
-/// to initialize the slot and then copy `v` into it.
-// TODO(#7): Provide constructor-style initialization.
-static inline void* CWISS_RawHashSet_insert_at(const CWISS_Policy* policy,
-                                               CWISS_RawHashSet* self, size_t i,
-                                               const void* v) {
+/// to initialize the slot.
+static inline void* CWISS_RawHashSet_pre_insert(const CWISS_Policy* policy,
+                                                CWISS_RawHashSet* self,
+                                                size_t i) {
   void* dst = self->slots_ + i * policy->slot->size;
   policy->slot->init(dst);
-  void* val = policy->slot->get(dst);
-  policy->obj->copy(val, v);
-
-  return dst;
+  return policy->slot->get(dst);
 }
 
 /// Creates a new empty table with the given capacity.
@@ -643,7 +640,8 @@ static inline CWISS_RawHashSet CWISS_RawHashSet_dup(
         CWISS_find_first_non_full(copy.ctrl_, hash, copy.capacity_);
     CWISS_SetCtrl(target.offset, CWISS_H2(hash), copy.capacity_, copy.ctrl_,
                   copy.slots_, policy->slot->size);
-    CWISS_RawHashSet_insert_at(policy, &copy, target.offset, v);
+    void* slot = CWISS_RawHashSet_pre_insert(policy, &copy, target.offset);
+    policy->obj->copy(slot, v);
     // infoz().RecordInsert(hash, target.probe_length);
   }
   copy.size_ = self->size_;
@@ -717,19 +715,49 @@ typedef struct {
   bool inserted;
 } CWISS_Insert;
 
-/// Inserts `val` into the table if it isn't already present. Returns an
-/// iterator pointing to the element in the map and whether it was just inserted
-/// or was already present.
+/// "Inserts" `val` into the table if it isn't already present.
+///
+/// This function does not perform insertion; it behaves exactly like
+/// `CWISS_RawHashSet_insert()` up until it would copy-initialize the new
+/// element, instead returning a valid iterator pointing to uninitialized data.
+///
+/// This allows, for example, lazily constructing the parts of the element that
+/// do not figure into the hash or equality.
+///
+/// If this function returns `true` in `inserted`, the caller has *no choice*
+/// but to insert, i.e., they may not change their minds at that point.
+///
+/// `key_policy` is a possibly heterogenous key policy for comparing `key`'s
+/// type to types in the map. `key_policy` may be `&policy->key`.
+static inline CWISS_Insert CWISS_RawHashSet_deferred_insert(
+    const CWISS_Policy* policy, const CWISS_KeyPolicy* key_policy,
+    CWISS_RawHashSet* self, const void* key) {
+  CWISS_PrepareInsert res =
+      CWISS_RawHashSet_find_or_prepare_insert(policy, key_policy, self, key);
+
+  if (res.inserted) {
+    CWISS_RawHashSet_pre_insert(policy, self, res.index);
+  }
+  return (CWISS_Insert){CWISS_RawHashSet_citer_at(policy, self, res.index),
+                        res.inserted};
+}
+
+/// Inserts `val` (by copy) into the table if it isn't already present.
+///
+/// Returns an iterator pointing to the element in the map and whether it was
+/// just inserted or was already present.
 static inline CWISS_Insert CWISS_RawHashSet_insert(const CWISS_Policy* policy,
                                                    CWISS_RawHashSet* self,
                                                    const void* val) {
   CWISS_PrepareInsert res =
-      CWISS_RawHashSet_find_or_prepare_insert(policy, self, val);
-  if (res.insert) {
-    CWISS_RawHashSet_insert_at(policy, self, res.index, val);
+      CWISS_RawHashSet_find_or_prepare_insert(policy, policy->key, self, val);
+
+  if (res.inserted) {
+    void* slot = CWISS_RawHashSet_pre_insert(policy, self, res.index);
+    policy->obj->copy(slot, val);
   }
   return (CWISS_Insert){CWISS_RawHashSet_citer_at(policy, self, res.index),
-                        res.insert};
+                        res.inserted};
 }
 
 /// Tries to find the corresponding entry for `key` using `hash` as a hint.
@@ -791,7 +819,7 @@ static inline void CWISS_RawHashSet_erase_at(const CWISS_Policy* policy,
 /// type to types in the map. `key_policy` may be `&policy->key`.
 static inline bool CWISS_RawHashSet_erase(const CWISS_Policy* policy,
                                           const CWISS_KeyPolicy* key_policy,
-                                          const CWISS_RawHashSet* self,
+                                          CWISS_RawHashSet* self,
                                           const void* key) {
   CWISS_RawIter it = CWISS_RawHashSet_find(policy, key_policy, self, key);
   if (it.slot_ == NULL) return false;
