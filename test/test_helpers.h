@@ -17,9 +17,9 @@
 
 // Helpers for interacting with C SwissTables from C++.
 
-#include "cwisstable.h"
-
 #include <cstdint>
+
+#include "cwisstable.h"
 
 namespace cwisstable {
 template <typename T>
@@ -27,6 +27,17 @@ struct DefaultHash {
   size_t operator()(const T& val) {
     CWISS_FxHash_State state = 0;
     CWISS_FxHash_Write(&state, &val, sizeof(T));
+    return state;
+  }
+};
+
+struct HashStdString {
+  template <typename S>
+  size_t operator()(const S& s) {
+    CWISS_FxHash_State state = 0;
+    size_t size = s.size();
+    CWISS_FxHash_Write(&state, &size, sizeof(size_t));
+    CWISS_FxHash_Write(&state, s.data(), s.size());
     return state;
   }
 };
@@ -70,33 +81,51 @@ constexpr const CWISS_Policy& FlatPolicy() {
   return FlatPolicyWrapper<T, Hash, Eq>::kPolicy;
 }
 
-
 // Helpers for doing some operations on tables with minimal pain.
 //
 // This macro expands to functions that will form an overload set with other
 // table types.
-#define TABLE_HELPERS(HashSet_)                                              \
-  HashSet_##_Entry* Find(HashSet_& set, const HashSet_##_Key& needle) {      \
-    auto it = HashSet_##_find(&set, &needle);                                \
-    return HashSet_##_Iter_get(&it);                                         \
-  }                                                                          \
-  std::pair<HashSet_##_Entry*, bool> Insert(HashSet_& set,                   \
-                                            const HashSet_##_Entry& value) { \
-    auto it = HashSet_##_insert(&set, &value);                               \
-    return {HashSet_##_Iter_get(&it.iter), it.inserted};                     \
-  }                                                                          \
-  bool Erase(HashSet_& set, const HashSet_##_Key& needle) {                  \
-    return HashSet_##_erase(&set, &needle);                                  \
-  }                                                                          \
-  std::vector<HashSet_##_Entry> Collect(const HashSet_& set) {               \
-    std::vector<HashSet_##_Entry> items;                                     \
-    items.reserve(HashSet_##_size(&set));                                    \
-    for (auto it = HashSet_##_citer(&set); HashSet_##_CIter_get(&it);        \
-         HashSet_##_CIter_next(&it)) {                                       \
-      items.push_back(*HashSet_##_CIter_get(&it));                           \
-    }                                                                        \
-    return items;                                                            \
+#define TABLE_HELPERS(HashSet_)                                                \
+  CWISS_ALWAYS_INLINE                                                          \
+  HashSet_##_Entry* Find(HashSet_& set, const HashSet_##_Key& needle) {        \
+    auto it = HashSet_##_find(&set, &needle);                                  \
+    return HashSet_##_Iter_get(&it);                                           \
+  }                                                                            \
+  CWISS_ALWAYS_INLINE                                                          \
+  std::pair<HashSet_##_Entry*, bool> Insert(HashSet_& set,                     \
+                                            const HashSet_##_Entry& value) {   \
+    auto it = HashSet_##_insert(&set, &value);                                 \
+    return {HashSet_##_Iter_get(&it.iter), it.inserted};                       \
+  }                                                                            \
+  CWISS_ALWAYS_INLINE                                                          \
+  std::pair<HashSet_##_Entry*, bool> LazyInsert(HashSet_& set,                 \
+                                                const HashSet_##_Key& value) { \
+    auto it = HashSet_##_deferred_insert(&set, &value);                        \
+    return {HashSet_##_Iter_get(&it.iter), it.inserted};                       \
+  }                                                                            \
+  CWISS_ALWAYS_INLINE                                                          \
+  std::pair<HashSet_##_Entry*, bool> MoveInsert(HashSet_& set,                 \
+                                                HashSet_##_Entry&& value) {    \
+    auto [ptr, inserted] = LazyInsert(set, value);                             \
+    if (inserted) {                                                            \
+      new (ptr) HashSet_##_Entry(value);                                       \
+    }                                                                          \
+    return {ptr, inserted};                                                    \
+  }                                                                            \
+  CWISS_ALWAYS_INLINE                                                          \
+  bool Erase(HashSet_& set, const HashSet_##_Key& needle) {                    \
+    return HashSet_##_erase(&set, &needle);                                    \
+  }                                                                            \
+  CWISS_ALWAYS_INLINE                                                          \
+  std::vector<HashSet_##_Entry> Collect(const HashSet_& set) {                 \
+    std::vector<HashSet_##_Entry> items;                                       \
+    items.reserve(HashSet_##_size(&set));                                      \
+    for (auto it = HashSet_##_citer(&set); HashSet_##_CIter_get(&it);          \
+         HashSet_##_CIter_next(&it)) {                                         \
+      items.push_back(*HashSet_##_CIter_get(&it));                             \
+    }                                                                          \
+    return items;                                                              \
   }
-}
+}  // namespace cwisstable
 
 #endif  // CWISSTABLE_TEST_HELPERS_H_
