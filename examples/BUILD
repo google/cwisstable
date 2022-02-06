@@ -20,6 +20,24 @@ load(
 )
 
 cc_binary(
+    name = "arraymap_unified",
+    srcs = ["arraymap.c"],
+    deps = ["//:unified"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+    defines = ["CWISS_EXAMPLE_UNIFIED"],
+)
+
+cc_binary(
+    name = "arraymap_split",
+    srcs = ["arraymap.c"],
+    deps = ["//:split"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+    defines = ["CWISS_EXAMPLE_SPLIT"],
+)
+
+cc_binary(
     name = "hashset_unified",
     srcs = ["hashset.c"],
     deps = ["//:unified"],

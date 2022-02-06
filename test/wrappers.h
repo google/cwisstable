@@ -487,6 +487,7 @@ class raw_hash_set {
 
   size_t count(const key_type& key) const { return find(key) == end() ? 0 : 1; }
 
+  template <typename Key>
   iterator find(const key_type& v, size_t hash) {
     return {Inner_find_hinted(i(), &v, hash)};
   }

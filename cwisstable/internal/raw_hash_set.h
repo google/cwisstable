@@ -735,10 +735,13 @@ static inline CWISS_Insert CWISS_RawHashSet_insert(const CWISS_Policy* policy,
 /// Tries to find the corresponding entry for `key` using `hash` as a hint.
 /// If not found, returns a null iterator.
 ///
+/// `key_policy` is a possibly heterogenous key policy for comparing `key`'s
+/// type to types in the map. `key_policy` may be `&policy->key`.
+///
 /// If `hash` is not actually the hash of `key`, UB.
 static inline CWISS_RawIter CWISS_RawHashSet_find_hinted(
-    const CWISS_Policy* policy, const CWISS_RawHashSet* self, const void* key,
-    size_t hash) {
+    const CWISS_Policy* policy, const CWISS_KeyPolicy* key_policy,
+    const CWISS_RawHashSet* self, const void* key, size_t hash) {
   CWISS_probe_seq seq = CWISS_probe(self->ctrl_, hash, self->capacity_);
   while (true) {
     CWISS_Group g = CWISS_Group_new(self->ctrl_ + seq.offset_);
@@ -747,7 +750,7 @@ static inline CWISS_RawIter CWISS_RawHashSet_find_hinted(
     while (CWISS_BitMask_next(&match, &i)) {
       char* slot =
           self->slots_ + CWISS_probe_seq_offset(&seq, i) * policy->slot->size;
-      if (CWISS_LIKELY(policy->key->eq(policy->slot->get(slot), key)))
+      if (CWISS_LIKELY(key_policy->eq(key, policy->slot->get(slot))))
         return CWISS_RawHashSet_citer_at(policy, self,
                                          CWISS_probe_seq_offset(&seq, i));
     }
@@ -760,11 +763,14 @@ static inline CWISS_RawIter CWISS_RawHashSet_find_hinted(
 
 /// Tries to find the corresponding entry for `key`.
 /// If not found, returns a null iterator.
-static inline CWISS_RawIter CWISS_RawHashSet_find(const CWISS_Policy* policy,
-                                                  const CWISS_RawHashSet* self,
-                                                  const void* key) {
-  return CWISS_RawHashSet_find_hinted(policy, self, key,
-                                      policy->key->hash(key));
+///
+/// `key_policy` is a possibly heterogenous key policy for comparing `key`'s
+/// type to types in the map. `key_policy` may be `&policy->key`.
+static inline CWISS_RawIter CWISS_RawHashSet_find(
+    const CWISS_Policy* policy, const CWISS_KeyPolicy* key_policy,
+    const CWISS_RawHashSet* self, const void* key) {
+  return CWISS_RawHashSet_find_hinted(policy, key_policy, self, key,
+                                      key_policy->hash(key));
 }
 
 /// Erases the element pointed to by the given valid iterator.
@@ -780,10 +786,14 @@ static inline void CWISS_RawHashSet_erase_at(const CWISS_Policy* policy,
 
 /// Erases the entry corresponding to `key`, if present. Returns true if
 /// deletion occured.
+///
+/// `key_policy` is a possibly heterogenous key policy for comparing `key`'s
+/// type to types in the map. `key_policy` may be `&policy->key`.
 static inline bool CWISS_RawHashSet_erase(const CWISS_Policy* policy,
+                                          const CWISS_KeyPolicy* key_policy,
                                           const CWISS_RawHashSet* self,
                                           const void* key) {
-  CWISS_RawIter it = CWISS_RawHashSet_find(policy, self, key);
+  CWISS_RawIter it = CWISS_RawHashSet_find(policy, key_policy, self, key);
   if (it.slot_ == NULL) return false;
   CWISS_RawHashSet_erase_at(policy, it);
   return true;
@@ -815,10 +825,14 @@ static inline void CWISS_RawHashSet_rehash(const CWISS_Policy* policy,
 }
 
 /// Returns whether `key` is contained in this table.
+///
+/// `key_policy` is a possibly heterogenous key policy for comparing `key`'s
+/// type to types in the map. `key_policy` may be `&policy->key`.
 static inline bool CWISS_RawHashSet_contains(const CWISS_Policy* policy,
+                                             const CWISS_KeyPolicy* key_policy,
                                              const CWISS_RawHashSet* self,
                                              const void* key) {
-  return CWISS_RawHashSet_find(policy, self, key).slot_ != NULL;
+  return CWISS_RawHashSet_find(policy, key_policy, self, key).slot_ != NULL;
 }
 
 CWISS_END_EXTERN_

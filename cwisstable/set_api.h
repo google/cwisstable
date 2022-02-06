@@ -166,6 +166,52 @@ static inline void MySet_erase_at(MySet_Iter it);
 /// Returns `true` if erasure happened.
 static inline bool MySet_erase(MySet* self, const T* key);
 
+// CWISS_DECLARE_LOOKUP(MySet, View) expands to:
+
+/// Returns the policy used with this lookup extension.
+static inline const CWISS_KeyPolicy* MySet_View_policy(void);
+
+/// Checks if this set contains the given element.
+///
+/// In general, if you plan to use the element and not just check for it,
+/// prefer `MySet_find()` and friends.
+static inline bool MySet_contains_by_View(const MySet* self, const View* key);
+
+/// Searches the table for `key`, non-mutating iterator version.
+///
+/// If found, returns an iterator at the found element; otherwise, returns
+/// an iterator that's already at the end: `get()` will return `NULL`.
+static inline MySet_CIter MySet_cfind_by_View(const MySet* self,
+                                              const View* key);
+
+/// Searches the table for `key`, mutating iterator version.
+///
+/// If found, returns an iterator at the found element; otherwise, returns
+/// an iterator that's already at the end: `get()` will return `NULL`.
+///
+/// This function does not trigger rehashes.
+static inline MySet_Iter MySet_find_by_View(MySet* self, const View* key);
+
+/// Like `MySet_cfind`, but takes a pre-computed hash.
+///
+/// The hash must be correct for `key`.
+static inline MySet_CIter MySet_cfind_hinted_by_View(const MySet* self,
+                                                     const View* key,
+                                                     size_t hash);
+
+/// Like `MySet_find`, but takes a pre-computed hash.
+///
+/// The hash must be correct for `key`.
+///
+/// This function does not trigger rehashes.
+static inline MySet_Iter MySet_find_hinted_by_View(MySet* self, const View* key,
+                                                   size_t hash);
+
+/// Looks up `key` and erases it from the map.
+///
+/// Returns `true` if erasure happened.
+static inline bool MySet_erase_by_View(MySet* self, const View* key);
+
 #error "This file is for demonstration purposes only."
 
 #endif  // CWISSTABLE_SET_API_H_
