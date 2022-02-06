@@ -16,6 +16,7 @@ load(
     "//:copts.bzl",
     "CWISS_DEFAULT_COPTS",
     "CWISS_DEFAULT_LINKOPTS",
+    "CWISS_TEST_COPTS",
     "CWISS_C_VERSION",
     "CWISS_CXX_VERSION",
 )
@@ -83,6 +84,48 @@ cc_library(
     linkopts = CWISS_DEFAULT_LINKOPTS,
     deps = [":unified"],
     visibility = ["//:__subpackages__"],
+)
+
+cc_library(
+    name = "test_helpers",
+    hdrs = ["cwisstable/internal/test_helpers.h"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+    deps = ["//:unified"],
+    visibility = ["//:__subpackages__"],
+)
+
+cc_test(
+    name = "cwisstable_test",
+    srcs = ["cwisstable/cwisstable_test.cc"],
+    deps = [
+        ":debug",
+        ":unified",
+        ":test_helpers",
+
+        "@com_google_absl//absl/cleanup",
+        "@com_google_googletest//:gtest_main",
+    ],
+    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+)
+
+cc_binary(
+    name = "cwisstable_benchmark",
+    srcs = ["cwisstable/cwisstable_benchmark.cc"],
+    tags = ["benchmark"],
+    deps = [
+        ":debug",
+        ":unified",
+        ":test_helpers",
+        
+        "@com_google_absl//absl/cleanup",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+    testonly = 1,
 )
 
 config_setting(

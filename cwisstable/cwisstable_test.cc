@@ -27,9 +27,9 @@
 
 #include "absl/cleanup/cleanup.h"
 #include "cwisstable/internal/debug.h"
+#include "cwisstable/internal/test_helpers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "test/test_helpers.h"
 
 namespace cwisstable {
 namespace {

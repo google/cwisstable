@@ -23,7 +23,7 @@
 #include "absl/strings/str_format.h"
 #include "benchmark/benchmark.h"
 #include "cwisstable.h"
-#include "test/test_helpers.h"
+#include "cwisstable/internal/test_helpers.h"
 
 namespace cwisstable {
 namespace {
@@ -80,7 +80,7 @@ void BM_CacheInSteadyState(benchmark::State& state) {
       DoNotOptimize(Find(t, *--it));
     }
 
-    // Some cache misses. 
+    // Some cache misses.
     for (int i = 0; i != 10; ++i) {
       DoNotOptimize(Find(t, gen(rng)));
     }

@@ -87,25 +87,25 @@ constexpr const CWISS_Policy& FlatPolicy() {
 // table types.
 #define TABLE_HELPERS(HashSet_)                                                \
   CWISS_ALWAYS_INLINE                                                          \
-  HashSet_##_Entry* Find(HashSet_& set, const HashSet_##_Key& needle) {        \
+  inline HashSet_##_Entry* Find(HashSet_& set, const HashSet_##_Key& needle) { \
     auto it = HashSet_##_find(&set, &needle);                                  \
     return HashSet_##_Iter_get(&it);                                           \
   }                                                                            \
   CWISS_ALWAYS_INLINE                                                          \
-  std::pair<HashSet_##_Entry*, bool> Insert(HashSet_& set,                     \
-                                            const HashSet_##_Entry& value) {   \
+  inline std::pair<HashSet_##_Entry*, bool> Insert(                            \
+      HashSet_& set, const HashSet_##_Entry& value) {                          \
     auto it = HashSet_##_insert(&set, &value);                                 \
     return {HashSet_##_Iter_get(&it.iter), it.inserted};                       \
   }                                                                            \
   CWISS_ALWAYS_INLINE                                                          \
-  std::pair<HashSet_##_Entry*, bool> LazyInsert(HashSet_& set,                 \
-                                                const HashSet_##_Key& value) { \
+  inline std::pair<HashSet_##_Entry*, bool> LazyInsert(                        \
+      HashSet_& set, const HashSet_##_Key& value) {                            \
     auto it = HashSet_##_deferred_insert(&set, &value);                        \
     return {HashSet_##_Iter_get(&it.iter), it.inserted};                       \
   }                                                                            \
   CWISS_ALWAYS_INLINE                                                          \
-  std::pair<HashSet_##_Entry*, bool> MoveInsert(HashSet_& set,                 \
-                                                HashSet_##_Entry&& value) {    \
+  inline std::pair<HashSet_##_Entry*, bool> MoveInsert(                        \
+      HashSet_& set, HashSet_##_Entry&& value) {                               \
     auto [ptr, inserted] = LazyInsert(set, value);                             \
     if (inserted) {                                                            \
       new (ptr) HashSet_##_Entry(value);                                       \
@@ -113,11 +113,11 @@ constexpr const CWISS_Policy& FlatPolicy() {
     return {ptr, inserted};                                                    \
   }                                                                            \
   CWISS_ALWAYS_INLINE                                                          \
-  bool Erase(HashSet_& set, const HashSet_##_Key& needle) {                    \
+  inline bool Erase(HashSet_& set, const HashSet_##_Key& needle) {             \
     return HashSet_##_erase(&set, &needle);                                    \
   }                                                                            \
   CWISS_ALWAYS_INLINE                                                          \
-  std::vector<HashSet_##_Entry> Collect(const HashSet_& set) {                 \
+  inline std::vector<HashSet_##_Entry> Collect(const HashSet_& set) {          \
     std::vector<HashSet_##_Entry> items;                                       \
     items.reserve(HashSet_##_size(&set));                                      \
     for (auto it = HashSet_##_citer(&set); HashSet_##_CIter_get(&it);          \
