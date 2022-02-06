@@ -33,6 +33,6 @@ http_archive(
 # Abseil for our modified Abseil tests.
 http_archive(
   name = "com_google_absl",
-  urls = ["https://github.com/abseil/abseil-cpp/archive/98eb410c93ad059f9bba1bf43f5bb916fc92a5ea.zip"],
-  strip_prefix = "abseil-cpp-98eb410c93ad059f9bba1bf43f5bb916fc92a5ea",
+  urls = ["https://github.com/abseil/abseil-cpp/archive/36db0e4b695756c948dbb45568b43a62ba5883ec.zip"],
+  strip_prefix = "abseil-cpp-36db0e4b695756c948dbb45568b43a62ba5883ec",
 )

@@ -29,6 +29,14 @@ cc_library(
     linkopts = CWISS_DEFAULT_LINKOPTS,
 )
 
+cc_library(
+    name = "test_helpers",
+    hdrs = ["test_helpers.h"],
+    deps = ["//:unified"],
+    copts = CWISS_DEFAULT_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+)
+
 cc_test(
     name = "raw_hash_set_test",
     srcs = ["absl_raw_hash_set_test.cc"],
@@ -41,6 +49,21 @@ cc_test(
         "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest_main",
+    ],
+    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+)
+
+cc_test(
+    name = "cwisstable_test",
+    srcs = ["cwisstable_test.cc"],
+    deps = [
+        ":test_helpers",
+        "//:unified",
+        "//:debug",
+
+        "@com_google_absl//absl/cleanup",
         "@com_google_googletest//:gtest_main",
     ],
     copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,

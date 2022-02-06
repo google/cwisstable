@@ -157,7 +157,7 @@ static inline CWISS_RawIter CWISS_RawHashSet_iter_at(const CWISS_Policy* policy,
       self->slots_ + index * policy->slot->size,
   };
   CWISS_RawIter_skip_empty_or_deleted(policy, &iter);
-  CWISS_AssertIsFull(iter.ctrl_);
+  CWISS_AssertIsValid(iter.ctrl_);
   return iter;
 }
 
@@ -631,9 +631,8 @@ static inline CWISS_RawHashSet CWISS_RawHashSet_dup(
   // `CWISS_RawHashSet_rehash_and_grow_if_necessary()` because we are already
   // big enough (since `self` is a priori) and tombstones cannot be created
   // during this process.
-  CWISS_RawIter iter = CWISS_RawHashSet_citer(policy, self);
-  void* v;
-  while ((v = CWISS_RawIter_next(policy, &iter))) {
+  for (CWISS_RawIter iter = CWISS_RawHashSet_citer(policy, self); CWISS_RawIter_get(policy, &iter); CWISS_RawIter_next(policy, &iter)) {
+    void* v = CWISS_RawIter_get(policy, &iter);
     size_t hash = policy->key->hash(v);
 
     CWISS_FindInfo target =

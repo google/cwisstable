@@ -25,6 +25,7 @@ KEYS = [
   
   'slot_size', 'slot_align', 'slot_init',
   'slot_transfer', 'slot_get', 'slot_dtor',
+  'modifiers',
 ]
 
 def main():
