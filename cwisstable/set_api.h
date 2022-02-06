@@ -216,6 +216,22 @@ static inline MySet_CIter MySet_cfind_hinted_by_View(const MySet* self,
                                                      const View* key,
                                                      size_t hash);
 
+/// "Inserts" `key` into the table if it isn't already present.
+///
+/// This function does not perform insertion; it behaves exactly like
+/// `MyMap_insert()` up until it would copy-initialize the new
+/// element, instead returning a valid iterator pointing to uninitialized data.
+///
+/// This allows, for example, lazily constructing the parts of the element that
+/// do not figure into the hash or equality. The initialized element must have
+/// the same hash value and must compare equal to the value used for the initial
+/// lookup; UB may otherwise result.
+///
+/// If this function returns `true` in `inserted`, the caller has *no choice*
+/// but to insert, i.e., they may not change their minds at that point.
+static inline MyMap_Insert MyMap_deferred_insert_by_View(MySet* self,
+                                                         const View* key);
+
 /// Like `MySet_find`, but takes a pre-computed hash.
 ///
 /// The hash must be correct for `key`.
