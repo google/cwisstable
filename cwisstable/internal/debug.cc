@@ -32,10 +32,6 @@
 #include <algorithm>
 
 namespace cwisstable::internal {
-// Returns the number of probes required to lookup `key`.  Returns 0 for a
-// search with no collisions.  Higher values mean more hash collisions occurred;
-// however, the exact meaning of this number varies according to the container
-// type.
 size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
                                   const CWISS_RawHashSet* set,
                                   const void* key) {
@@ -59,8 +55,6 @@ size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
   }
 }
 
-// Returns the number of bytes requested from the allocator by the container
-// and not freed.
 size_t AllocatedByteSize(const CWISS_Policy* policy,
                          const CWISS_RawHashSet* set) {
   size_t capacity = set->capacity_;
@@ -81,8 +75,6 @@ size_t AllocatedByteSize(const CWISS_Policy* policy,
   return m;
 }
 
-// Returns a tight lower bound for AllocatedByteSize(c) where `c` is of type `C`
-// and `c.size()` is equal to `num_elements`.
 size_t LowerBoundAllocatedByteSize(const CWISS_Policy* policy, size_t size) {
   size_t capacity = CWISS_GrowthToLowerboundCapacity(size);
   if (capacity == 0) return 0;
@@ -95,8 +87,6 @@ size_t LowerBoundAllocatedByteSize(const CWISS_Policy* policy, size_t size) {
   return m;
 }
 
-// Gets a histogram of the number of probes for each elements in the container.
-// The sum of all the values in the vector is equal to container.size().
 std::vector<size_t> GetHashtableDebugNumProbesHistogram(
     const CWISS_Policy* policy, const CWISS_RawHashSet* set) {
   std::vector<size_t> v;
@@ -110,8 +100,6 @@ std::vector<size_t> GetHashtableDebugNumProbesHistogram(
   return v;
 }
 
-// Gets a summary of the probe count distribution for the elements in the
-// container.
 HashtableDebugProbeSummary GetHashtableDebugProbeSummary(
     const CWISS_Policy* policy, const CWISS_RawHashSet* set) {
   auto probes = GetHashtableDebugNumProbesHistogram(policy, set);
