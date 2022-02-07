@@ -22,7 +22,7 @@
 #include <string.h>
 
 #include "cwisstable/internal/base.h"
-#include "cwisstable/internal/ctrl.h"
+#include "cwisstable/internal/control_byte.h"
 
 /// Capacity, load factor, and allocation size computations for a SwissTable.
 ///
