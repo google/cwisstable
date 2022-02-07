@@ -121,8 +121,8 @@ static inline uint32_t CWISS_LeadingZeroes64(uint64_t x) {
 #define CWISS_BitWidth(x_) \
   (((uint32_t)(sizeof(x_) * 8)) - CWISS_LeadingZeros(x_))
 
-#define CWISS_RotateLeft(x, bits) \
-  (((x) << bits) | ((x) >> (sizeof(x) * 8 - bits)))
+#define CWISS_RotateLeft(x_, bits_) \
+  (((x_) << bits_) | ((x_) >> (sizeof(x_) * 8 - bits_)))
 
 /// The return type of `CWISS_Mul128`.
 typedef struct {

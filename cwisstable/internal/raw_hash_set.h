@@ -398,8 +398,8 @@ static void CWISS_RawHashSet_drop_deletes_without_resize(
     // best probe we can.
     const size_t probe_offset =
         CWISS_probe(self->ctrl_, hash, self->capacity_).offset_;
-#define CWISS_probe_index(pos) \
-  (((pos - probe_offset) & self->capacity_) / CWISS_Group_kWidth)
+#define CWISS_probe_index(pos_) \
+  (((pos_ - probe_offset) & self->capacity_) / CWISS_Group_kWidth)
 
     // Element doesn't move.
     if (CWISS_LIKELY(CWISS_probe_index(new_i) == CWISS_probe_index(i))) {
