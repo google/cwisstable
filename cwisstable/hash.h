@@ -42,8 +42,8 @@
 ///
 /// `AbslHash` is the default hash function.
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
 
 typedef size_t CWISS_FxHash_State;
 #define CWISS_FxHash_kInit ((CWISS_FxHash_State)0)
@@ -111,7 +111,7 @@ static inline size_t CWISS_AbslHash_Finish(CWISS_AbslHash_State state) {
   return state;
 }
 
-CWISS_END_EXTERN_
-CWISS_END_
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_HASH_H_

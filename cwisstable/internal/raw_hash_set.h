@@ -41,8 +41,8 @@
 ///
 /// It is STRONGLY recommended that this pointer point to a const global.
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
 
 /// A SwissTable.
 typedef struct {
@@ -863,7 +863,7 @@ static inline bool CWISS_RawHashSet_contains(const CWISS_Policy* policy,
   return CWISS_RawHashSet_find(policy, key_policy, self, key).slot_ != NULL;
 }
 
-CWISS_END_EXTERN_
-CWISS_END_
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_INTERNAL_RAW_HASH_SET_H_

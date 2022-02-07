@@ -55,8 +55,8 @@
 ///
 /// The length of this array is computed by `CWISS_AllocSize()`.
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
 
 /// Returns he number of "cloned control bytes".
 ///
@@ -233,7 +233,7 @@ static inline bool CWISS_is_small(size_t capacity) {
   return capacity < CWISS_Group_kWidth - 1;
 }
 
-CWISS_END_EXTERN_
-CWISS_END_
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_INTERNAL_CAPACITY_H_
