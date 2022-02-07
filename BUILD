@@ -26,12 +26,14 @@ filegroup(
     srcs = [
         "cwisstable/declare.h",
         "cwisstable/policy.h",
+        "cwisstable/hash.h",
     ],
 )
 
 filegroup(
     name = "private_headers",
     srcs = [
+        "cwisstable/internal/absl_hash.h",
         "cwisstable/internal/base.h",
         "cwisstable/internal/bits.h",
         "cwisstable/internal/capacity.h",

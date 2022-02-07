@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cwisstable/hash.h"
 #include "cwisstable/internal/base.h"
 #include "cwisstable/internal/extract.h"
 
@@ -77,30 +78,6 @@
 
 CWISS_BEGIN_
 CWISS_BEGIN_EXTERN_
-
-// TODO: These should be put into their own file.
-typedef size_t CWISS_FxHash_State;
-static inline void CWISS_FxHash_Write(CWISS_FxHash_State* state,
-                                      const void* val, size_t len) {
-  const size_t kSeed = (size_t)(UINT64_C(0x517cc1b727220a95));
-  const uint32_t kRotate = 5;
-
-  const char* p = (const char*)val;
-  CWISS_FxHash_State state_ = *state;
-  while (len > 0) {
-    size_t word = 0;
-    size_t to_read = len >= sizeof(state_) ? sizeof(state_) : len;
-    memcpy(&word, p, to_read);
-
-    state_ = (state_ << kRotate) | (state_ >> (sizeof(state_) * 8 - kRotate));
-    state_ ^= word;
-    state_ *= kSeed;
-
-    len -= to_read;
-    p += to_read;
-  }
-  *state = state_;
-}
 
 /// A policy describing the basic laying properties of a type.
 ///
@@ -274,9 +251,9 @@ typedef struct {
   }                                                                      \
   CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
   inline size_t kPolicy_##_DefaultHash(const void* val) {                \
-    CWISS_FxHash_State state = 0;                                        \
-    CWISS_FxHash_Write(&state, val, sizeof(Key_));                       \
-    return state;                                                        \
+    CWISS_AbslHash_State state = CWISS_AbslHash_kInit;                   \
+    CWISS_AbslHash_Write(&state, val, sizeof(Key_));                     \
+    return CWISS_AbslHash_Finish(state);                                 \
   }                                                                      \
   CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
   inline bool kPolicy_##_DefaultEq(const void* a, const void* b) {       \
