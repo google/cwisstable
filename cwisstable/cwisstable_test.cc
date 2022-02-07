@@ -90,16 +90,16 @@ TEST(Util, GrowthAndCapacity) {
 }
 
 TEST(Util, probe_seq) {
-  auto seq = CWISS_probe_seq_new(0, 127);
+  auto seq = CWISS_ProbeSeq_new(0, 127);
   auto gen = [&]() {
-    size_t res = CWISS_probe_seq_offset(&seq, 0);
-    CWISS_probe_seq_next(&seq);
+    size_t res = CWISS_ProbeSeq_offset(&seq, 0);
+    CWISS_ProbeSeq_next(&seq);
     return res;
   };
   std::vector<size_t> offsets(8);
   std::generate_n(offsets.begin(), 8, gen);
   EXPECT_THAT(offsets, ElementsAre(0, 16, 48, 96, 32, 112, 80, 64));
-  seq = CWISS_probe_seq_new(128, 127);
+  seq = CWISS_ProbeSeq_new(128, 127);
   std::generate_n(offsets.begin(), 8, gen);
   EXPECT_THAT(offsets, ElementsAre(0, 16, 48, 96, 32, 112, 80, 64));
 }
@@ -170,17 +170,17 @@ TEST(BitMask, LeadingTrailing) {
   EXPECT_EQ(MaskTrailing(MakeMask<8, 3>(0x8000000000000000)), 7);
 }
 
-std::vector<uint32_t> GroupMatch(const CWISS_ctrl_t* group, CWISS_h2_t h) {
+std::vector<uint32_t> GroupMatch(const CWISS_ControlByte* group, CWISS_h2_t h) {
   auto g = CWISS_Group_new(group);
   return MaskBits(CWISS_Group_Match(&g, h));
 }
 
-std::vector<uint32_t> GroupMatchEmpty(const CWISS_ctrl_t* group) {
+std::vector<uint32_t> GroupMatchEmpty(const CWISS_ControlByte* group) {
   auto g = CWISS_Group_new(group);
   return MaskBits(CWISS_Group_MatchEmpty(&g));
 }
 
-std::vector<uint32_t> GroupMatchEmptyOrDeleted(const CWISS_ctrl_t* group) {
+std::vector<uint32_t> GroupMatchEmptyOrDeleted(const CWISS_ControlByte* group) {
   auto g = CWISS_Group_new(group);
   return MaskBits(CWISS_Group_MatchEmptyOrDeleted(&g));
 }
@@ -191,23 +191,24 @@ TEST(Group, EmptyGroup) {
   }
 }
 
-CWISS_ctrl_t CtrlT(int i) { return static_cast<CWISS_ctrl_t>(i); }
+CWISS_ControlByte Control(int i) { return static_cast<CWISS_ControlByte>(i); }
 
 TEST(Group, Match) {
   if (CWISS_Group_kWidth == 16) {
-    CWISS_ctrl_t group[] = {CWISS_kEmpty, CtrlT(1), CWISS_kDeleted,  CtrlT(3),
-                            CWISS_kEmpty, CtrlT(5), CWISS_kSentinel, CtrlT(7),
-                            CtrlT(7),     CtrlT(5), CtrlT(3),        CtrlT(1),
-                            CtrlT(1),     CtrlT(1), CtrlT(1),        CtrlT(1)};
+    CWISS_ControlByte group[] = {
+        CWISS_kEmpty, Control(1), CWISS_kDeleted,  Control(3),
+        CWISS_kEmpty, Control(5), CWISS_kSentinel, Control(7),
+        Control(7),   Control(5), Control(3),      Control(1),
+        Control(1),   Control(1), Control(1),      Control(1)};
     EXPECT_THAT(GroupMatch(group, 0), ElementsAre());
     EXPECT_THAT(GroupMatch(group, 1), ElementsAre(1, 11, 12, 13, 14, 15));
     EXPECT_THAT(GroupMatch(group, 3), ElementsAre(3, 10));
     EXPECT_THAT(GroupMatch(group, 5), ElementsAre(5, 9));
     EXPECT_THAT(GroupMatch(group, 7), ElementsAre(7, 8));
   } else if (CWISS_Group_kWidth == 8) {
-    CWISS_ctrl_t group[] = {CWISS_kEmpty,    CtrlT(1), CtrlT(2),
-                            CWISS_kDeleted,  CtrlT(2), CtrlT(1),
-                            CWISS_kSentinel, CtrlT(1)};
+    CWISS_ControlByte group[] = {CWISS_kEmpty,    Control(1), Control(2),
+                                 CWISS_kDeleted,  Control(2), Control(1),
+                                 CWISS_kSentinel, Control(1)};
     EXPECT_THAT(GroupMatch(group, 0), ElementsAre());
     EXPECT_THAT(GroupMatch(group, 1), ElementsAre(1, 5, 7));
     EXPECT_THAT(GroupMatch(group, 2), ElementsAre(2, 4));
@@ -219,15 +220,16 @@ TEST(Group, Match) {
 
 TEST(Group, MatchEmpty) {
   if (CWISS_Group_kWidth == 16) {
-    CWISS_ctrl_t group[] = {CWISS_kEmpty, CtrlT(1), CWISS_kDeleted,  CtrlT(3),
-                            CWISS_kEmpty, CtrlT(5), CWISS_kSentinel, CtrlT(7),
-                            CtrlT(7),     CtrlT(5), CtrlT(3),        CtrlT(1),
-                            CtrlT(1),     CtrlT(1), CtrlT(1),        CtrlT(1)};
+    CWISS_ControlByte group[] = {
+        CWISS_kEmpty, Control(1), CWISS_kDeleted,  Control(3),
+        CWISS_kEmpty, Control(5), CWISS_kSentinel, Control(7),
+        Control(7),   Control(5), Control(3),      Control(1),
+        Control(1),   Control(1), Control(1),      Control(1)};
     EXPECT_THAT(GroupMatchEmpty(group), ElementsAre(0, 4));
   } else if (CWISS_Group_kWidth == 8) {
-    CWISS_ctrl_t group[] = {CWISS_kEmpty,    CtrlT(1), CtrlT(2),
-                            CWISS_kDeleted,  CtrlT(2), CtrlT(1),
-                            CWISS_kSentinel, CtrlT(1)};
+    CWISS_ControlByte group[] = {CWISS_kEmpty,    Control(1), Control(2),
+                                 CWISS_kDeleted,  Control(2), Control(1),
+                                 CWISS_kSentinel, Control(1)};
     EXPECT_THAT(GroupMatchEmpty(group), ElementsAre(0));
   } else {
     FAIL() << "No test coverage for CWISS_Group_kWidth == "
@@ -237,15 +239,16 @@ TEST(Group, MatchEmpty) {
 
 TEST(Group, MatchEmptyOrDeleted) {
   if (CWISS_Group_kWidth == 16) {
-    CWISS_ctrl_t group[] = {CWISS_kEmpty, CtrlT(1), CWISS_kDeleted,  CtrlT(3),
-                            CWISS_kEmpty, CtrlT(5), CWISS_kSentinel, CtrlT(7),
-                            CtrlT(7),     CtrlT(5), CtrlT(3),        CtrlT(1),
-                            CtrlT(1),     CtrlT(1), CtrlT(1),        CtrlT(1)};
+    CWISS_ControlByte group[] = {
+        CWISS_kEmpty, Control(1), CWISS_kDeleted,  Control(3),
+        CWISS_kEmpty, Control(5), CWISS_kSentinel, Control(7),
+        Control(7),   Control(5), Control(3),      Control(1),
+        Control(1),   Control(1), Control(1),      Control(1)};
     EXPECT_THAT(GroupMatchEmptyOrDeleted(group), ElementsAre(0, 2, 4));
   } else if (CWISS_Group_kWidth == 8) {
-    CWISS_ctrl_t group[] = {CWISS_kEmpty,    CtrlT(1), CtrlT(2),
-                            CWISS_kDeleted,  CtrlT(2), CtrlT(1),
-                            CWISS_kSentinel, CtrlT(1)};
+    CWISS_ControlByte group[] = {CWISS_kEmpty,    Control(1), Control(2),
+                                 CWISS_kDeleted,  Control(2), Control(1),
+                                 CWISS_kSentinel, Control(1)};
     EXPECT_THAT(GroupMatchEmptyOrDeleted(group), ElementsAre(0, 3));
   } else {
     FAIL() << "No test coverage for CWISS_Group_kWidth == "
@@ -257,12 +260,12 @@ TEST(Batch, DropDeletes) {
   constexpr size_t kCapacity = 63;
   constexpr size_t kGroupWidth = CWISS_Group_kWidth;
 
-  std::vector<CWISS_ctrl_t> ctrl(kCapacity + 1 + kGroupWidth);
+  std::vector<CWISS_ControlByte> ctrl(kCapacity + 1 + kGroupWidth);
   ctrl[kCapacity] = CWISS_kSentinel;
 
-  std::vector<CWISS_ctrl_t> pattern = {
-      CWISS_kEmpty, CtrlT(2), CWISS_kDeleted, CtrlT(2),
-      CWISS_kEmpty, CtrlT(1), CWISS_kDeleted};
+  std::vector<CWISS_ControlByte> pattern = {
+      CWISS_kEmpty, Control(2), CWISS_kDeleted, Control(2),
+      CWISS_kEmpty, Control(1), CWISS_kDeleted};
   for (size_t i = 0; i != kCapacity; ++i) {
     ctrl[i] = pattern[i % pattern.size()];
     if (i < kGroupWidth - 1) {
@@ -274,7 +277,7 @@ TEST(Batch, DropDeletes) {
   ASSERT_EQ(ctrl[kCapacity], CWISS_kSentinel);
 
   for (size_t i = 0; i < kCapacity + kGroupWidth; ++i) {
-    CWISS_ctrl_t expected = pattern[i % (kCapacity + 1) % pattern.size()];
+    CWISS_ControlByte expected = pattern[i % (kCapacity + 1) % pattern.size()];
     if (i == kCapacity) {
       expected = CWISS_kSentinel;
     }
@@ -291,27 +294,27 @@ TEST(Batch, DropDeletes) {
 }
 
 TEST(Group, CountLeadingEmptyOrDeleted) {
-  const std::vector<CWISS_ctrl_t> empty_examples = {CWISS_kEmpty,
-                                                    CWISS_kDeleted};
-  const std::vector<CWISS_ctrl_t> full_examples = {
-      CtrlT(0), CtrlT(1), CtrlT(2),   CtrlT(3),
-      CtrlT(5), CtrlT(9), CtrlT(127), CWISS_kSentinel};
+  const std::vector<CWISS_ControlByte> empty_examples = {CWISS_kEmpty,
+                                                         CWISS_kDeleted};
+  const std::vector<CWISS_ControlByte> full_examples = {
+      Control(0), Control(1), Control(2),   Control(3),
+      Control(5), Control(9), Control(127), CWISS_kSentinel};
 
-  for (CWISS_ctrl_t empty : empty_examples) {
-    std::vector<CWISS_ctrl_t> e(CWISS_Group_kWidth, empty);
+  for (CWISS_ControlByte empty : empty_examples) {
+    std::vector<CWISS_ControlByte> e(CWISS_Group_kWidth, empty);
     auto g = CWISS_Group_new(e.data());
     EXPECT_EQ(CWISS_Group_kWidth, CWISS_Group_CountLeadingEmptyOrDeleted(&g));
 
-    for (CWISS_ctrl_t full : full_examples) {
+    for (CWISS_ControlByte full : full_examples) {
       for (size_t i = 0; i != CWISS_Group_kWidth; ++i) {
-        std::vector<CWISS_ctrl_t> f(CWISS_Group_kWidth, empty);
+        std::vector<CWISS_ControlByte> f(CWISS_Group_kWidth, empty);
         f[i] = full;
 
         auto g = CWISS_Group_new(f.data());
         EXPECT_EQ(i, CWISS_Group_CountLeadingEmptyOrDeleted(&g));
       }
 
-      std::vector<CWISS_ctrl_t> f(CWISS_Group_kWidth, empty);
+      std::vector<CWISS_ControlByte> f(CWISS_Group_kWidth, empty);
       f[CWISS_Group_kWidth * 2 / 3] = full;
       f[CWISS_Group_kWidth / 2] = full;
 

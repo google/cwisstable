@@ -20,9 +20,9 @@ load(
 )
 
 cc_binary(
-    name = "arraymap_unified",
+    name = "arraymap",
     srcs = ["arraymap.c"],
-    deps = ["//:unified"],
+    deps = ["//:cwisstable"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
@@ -31,16 +31,16 @@ cc_binary(
 cc_binary(
     name = "arraymap_split",
     srcs = ["arraymap.c"],
-    deps = ["//:split"],
+    deps = ["//:cwisstable_split"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )
 
 cc_binary(
-    name = "hashset_unified",
+    name = "hashset",
     srcs = ["hashset.c"],
-    deps = ["//:unified"],
+    deps = ["//:cwisstable"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
@@ -49,16 +49,16 @@ cc_binary(
 cc_binary(
     name = "hashset_split",
     srcs = ["hashset.c"],
-    deps = ["//:split"],
+    deps = ["//:cwisstable_split"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )
 
 cc_binary(
-    name = "hashmap_unified",
+    name = "hashmap",
     srcs = ["hashmap.c"],
-    deps = ["//:unified"],
+    deps = ["//:cwisstable"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
@@ -67,16 +67,16 @@ cc_binary(
 cc_binary(
     name = "hashmap_split",
     srcs = ["hashmap.c"],
-    deps = ["//:split"],
+    deps = ["//:cwisstable_split"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )
 
 cc_binary(
-    name = "stringmap_unified",
+    name = "stringmap",
     srcs = ["stringmap.c"],
-    deps = ["//:unified"],
+    deps = ["//:cwisstable"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
@@ -85,7 +85,7 @@ cc_binary(
 cc_binary(
     name = "stringmap_split",
     srcs = ["stringmap.c"],
-    deps = ["//:split"],
+    deps = ["//:cwisstable_split"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
