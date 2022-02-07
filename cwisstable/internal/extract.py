@@ -15,7 +15,13 @@
 
 """
 Simple script for generating the extract.h header's boilerplate.
+
+Update it by running
+$ cwisstable/internal/extract.py
 """
+
+import os
+from pathlib import Path
 
 DEPTH = 64 
 KEYS = [
@@ -27,22 +33,32 @@ KEYS = [
   'slot_transfer', 'slot_get', 'slot_dtor',
   'modifiers',
 ]
+FILE = Path(__file__).parent / 'extract.h'
 
 def main():
+  text = FILE.read_text()
+  end = text.find('// !!!')
+
+  lines = []
+  lines.append(text[:end] + '// !!!')
+  lines.append('')
+
   for key in KEYS:
-    print(f'#define CWISS_EXTRACT_{key}(key, val) CWISS_EXTRACT_{key}Z##key')
-    print(f'#define CWISS_EXTRACT_{key}Z{key} CWISS_NOTHING, CWISS_NOTHING, CWISS_NOTHING')
-  print()
+    lines.append(f'#define CWISS_EXTRACT_{key}(key_, val_) CWISS_EXTRACT_{key}Z##key_')
+    lines.append(f'#define CWISS_EXTRACT_{key}Z{key} CWISS_NOTHING, CWISS_NOTHING, CWISS_NOTHING')
+  lines.append('')
 
   for i in range(0, DEPTH):
-    print(f'#define CWISS_EXTRACT{i:02X}(needle, kv, ...) CWISS_SELECT{i:02X}(needle kv, CWISS_EXTRACT_VALUE, kv, CWISS_EXTRACT{i+1:02X}, (needle, __VA_ARGS__), CWISS_NOTHING)')
-  print()
+    lines.append(f'#define CWISS_EXTRACT{i:02X}(needle_, kv_, ...) CWISS_SELECT{i:02X}(needle_ kv_, CWISS_EXTRACT_VALUE, kv_, CWISS_EXTRACT{i+1:02X}, (needle_, __VA_ARGS__), CWISS_NOTHING)')
+  lines.append('')
   for i in range(0, DEPTH):
-    print(f'#define CWISS_SELECT{i:02X}(x, ...) CWISS_SELECT{i:02X}_(x, __VA_ARGS__)')
-  print()
+    lines.append(f'#define CWISS_SELECT{i:02X}(x_, ...) CWISS_SELECT{i:02X}_(x_, __VA_ARGS__)')
+  lines.append('')
   for i in range(0, DEPTH):
-    print(f'#define CWISS_SELECT{i:02X}_(_1, _2, _3, call, args, ...) call args')
-  print()
-  print('#endif  // CWISSTABLE_EXTRACT_H_')
+    lines.append(f'#define CWISS_SELECT{i:02X}_(ignored_, _call_, _args_, call_, args_, ...) call_ args_')
+  lines.append('')
+  lines.append('#endif  // CWISSTABLE_INTERNAL_EXTRACT_H_')
+
+  FILE.write_text('\n'.join(lines) + '\n')
 
 if __name__ == '__main__': main()
