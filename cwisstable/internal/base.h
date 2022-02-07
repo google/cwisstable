@@ -193,20 +193,20 @@
   #define CWISS_UNLIKELY(cond_) (cond_)
 #endif
 
-/// `CWISS_ALWAYS_INLINE` informs the compiler that it should try really hard
+/// `CWISS_INLINE_ALWAYS` informs the compiler that it should try really hard
 /// to inline a function.
 #if CWISS_HAVE_GCC_ATTRIBUTE(always_inline)
-  #define CWISS_ALWAYS_INLINE __attribute__((always_inline))
+  #define CWISS_INLINE_ALWAYS __attribute__((always_inline))
 #else
-  #define CWISS_ALWAYS_INLINE
+  #define CWISS_INLINE_ALWAYS
 #endif
 
-/// `CWISS_NOINLINE` informs the compiler that it should avoid inlining a
+/// `CWISS_INLINE_NEVER` informs the compiler that it should avoid inlining a
 /// function.
 #if CWISS_HAVE_GCC_ATTRIBUTE(noinline)
-  #define CWISS_NOINLINE __attribute__((noinline))
+  #define CWISS_INLINE_NEVER __attribute__((noinline))
 #else
-  #define CWISS_NOINLINE
+  #define CWISS_INLINE_NEVER
 #endif
 
 /// `CWISS_PREFETCH` informs the compiler that it should issue prefetch

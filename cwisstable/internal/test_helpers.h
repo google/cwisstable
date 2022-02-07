@@ -121,24 +121,24 @@ constexpr const CWISS_Policy& FlatMapPolicy() {
 // This macro expands to functions that will form an overload set with other
 // table types.
 #define TABLE_HELPERS(HashSet_)                                                \
-  CWISS_ALWAYS_INLINE                                                          \
+  CWISS_INLINE_ALWAYS                                                          \
   inline HashSet_##_Entry* Find(HashSet_& set, const HashSet_##_Key& needle) { \
     auto it = HashSet_##_find(&set, &needle);                                  \
     return HashSet_##_Iter_get(&it);                                           \
   }                                                                            \
-  CWISS_ALWAYS_INLINE                                                          \
+  CWISS_INLINE_ALWAYS                                                          \
   inline std::pair<HashSet_##_Entry*, bool> Insert(                            \
       HashSet_& set, const HashSet_##_Entry& value) {                          \
     auto it = HashSet_##_insert(&set, &value);                                 \
     return {HashSet_##_Iter_get(&it.iter), it.inserted};                       \
   }                                                                            \
-  CWISS_ALWAYS_INLINE                                                          \
+  CWISS_INLINE_ALWAYS                                                          \
   inline std::pair<HashSet_##_Entry*, bool> LazyInsert(                        \
       HashSet_& set, const HashSet_##_Key& value) {                            \
     auto it = HashSet_##_deferred_insert(&set, &value);                        \
     return {HashSet_##_Iter_get(&it.iter), it.inserted};                       \
   }                                                                            \
-  CWISS_ALWAYS_INLINE                                                          \
+  CWISS_INLINE_ALWAYS                                                          \
   inline std::pair<HashSet_##_Entry*, bool> MoveInsert(                        \
       HashSet_& set, HashSet_##_Entry&& value) {                               \
     auto [ptr, inserted] = LazyInsert(set, value);                             \
@@ -147,11 +147,11 @@ constexpr const CWISS_Policy& FlatMapPolicy() {
     }                                                                          \
     return {ptr, inserted};                                                    \
   }                                                                            \
-  CWISS_ALWAYS_INLINE                                                          \
+  CWISS_INLINE_ALWAYS                                                          \
   inline bool Erase(HashSet_& set, const HashSet_##_Key& needle) {             \
     return HashSet_##_erase(&set, &needle);                                    \
   }                                                                            \
-  CWISS_ALWAYS_INLINE                                                          \
+  CWISS_INLINE_ALWAYS                                                          \
   inline std::vector<HashSet_##_Entry> Collect(const HashSet_& set) {          \
     std::vector<HashSet_##_Entry> items;                                       \
     items.reserve(HashSet_##_size(&set));                                      \

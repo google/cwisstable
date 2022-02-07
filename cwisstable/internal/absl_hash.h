@@ -43,7 +43,7 @@ static inline uint64_t CWISS_AbslHash_LowLevelMix(uint64_t v0, uint64_t v1) {
 #endif
 }
 
-CWISS_NOINLINE
+CWISS_INLINE_NEVER
 static uint64_t CWISS_AbslHash_LowLevelHash(const void* data, size_t len,
                                             uint64_t seed,
                                             const uint64_t salt[5]) {
@@ -157,7 +157,7 @@ static inline void CWISS_AbslHash_Mix(CWISS_AbslHash_State_* state,
   *state = CWISS_AbslHash_LowLevelMix(*state + v, kMul);
 }
 
-CWISS_NOINLINE
+CWISS_INLINE_NEVER
 static uint64_t CWISS_AbslHash_Hash64(const void* val, size_t len) {
   return CWISS_AbslHash_LowLevelHash(val, len, CWISS_AbslHash_kInit_,
                                      CWISS_AbslHash_kHashSalt);

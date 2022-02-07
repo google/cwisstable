@@ -91,7 +91,7 @@ static inline size_t RandomSeed(void) {
 
 /// Mixes a randomly generated per-process seed with `hash` and `ctrl` to
 /// randomize insertion order within groups.
-CWISS_NOINLINE static bool CWISS_ShouldInsertBackwards(
+CWISS_INLINE_NEVER static bool CWISS_ShouldInsertBackwards(
     size_t hash, const CWISS_ctrl_t* ctrl) {
   // To avoid problems with weak hashes and single bit tests, we use % 13.
   // TODO(kfm,sbenza): revisit after we do unconditional mixing
@@ -105,7 +105,7 @@ CWISS_NOINLINE static bool CWISS_ShouldInsertBackwards(
 ///
 /// Preconditions: `CWISS_IsValidCapacity(capacity)`,
 /// `ctrl[capacity]` == `kSentinel`, `ctrl[i] != kSentinel for i < capacity`.
-CWISS_NOINLINE static void CWISS_ConvertDeletedToEmptyAndFullToDeleted(
+CWISS_INLINE_NEVER static void CWISS_ConvertDeletedToEmptyAndFullToDeleted(
     CWISS_ctrl_t* ctrl, size_t capacity) {
   CWISS_DCHECK(ctrl[capacity] == CWISS_kSentinel, "bad ctrl value at %zu: %02x",
                capacity, ctrl[capacity]);

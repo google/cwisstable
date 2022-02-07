@@ -29,7 +29,7 @@ CWISS_BEGIN_
 CWISS_BEGIN_EXTERN_
 
 /// Counts the number of trailing zeroes in the binary representation of `x`.
-CWISS_ALWAYS_INLINE
+CWISS_INLINE_ALWAYS
 static inline uint32_t CWISS_TrailingZeroes64(uint64_t x) {
 #if CWISS_HAVE_CLANG_BUILTIN(__builtin_ctzll) || CWISS_IS_GCC
   static_assert(sizeof(unsigned long long) == sizeof(x),
@@ -61,7 +61,7 @@ static inline uint32_t CWISS_TrailingZeroes64(uint64_t x) {
 }
 
 /// Counts the number of leading zeroes in the binary representation of `x`.
-CWISS_ALWAYS_INLINE
+CWISS_INLINE_ALWAYS
 static inline uint32_t CWISS_LeadingZeroes64(uint64_t x) {
 #if CWISS_HAVE_CLANG_BUILTIN(__builtin_clzll) || CWISS_IS_GCC
   static_assert(sizeof(unsigned long long) == sizeof(x),
