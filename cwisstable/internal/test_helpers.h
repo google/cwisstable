@@ -81,6 +81,41 @@ constexpr const CWISS_Policy& FlatPolicy() {
   return FlatPolicyWrapper<T, Hash, Eq>::kPolicy;
 }
 
+template <typename K, typename V, typename Hash, typename Eq>
+struct FlatMapPolicyWrapper {
+  CWISS_GCC_PUSH_
+  CWISS_GCC_ALLOW_("-Waddress")
+  // clang-format off
+  CWISS_DECLARE_FLAT_MAP_POLICY(kPolicy, K, V,
+    (modifiers, static constexpr),
+    (obj_copy, [](void* dst, const void* src) {
+      new (dst) kPolicy_Entry(*static_cast<const kPolicy_Entry*>(src));
+    }),
+    (obj_dtor, [](void* val) {
+      static_cast<kPolicy_Entry*>(val)->~kPolicy_Entry();
+    }),
+    (key_hash, [](const void* val) {
+      return Hash{}(static_cast<const kPolicy_Entry*>(val)->k);
+    }),
+    (key_eq, [](const void* a, const void* b) {
+      return Eq{}(static_cast<const kPolicy_Entry*>(a)->k,
+                  static_cast<const kPolicy_Entry*>(b)->k);
+    }),
+    (slot_transfer, [](void* dst, void* src) {
+      kPolicy_Entry* old = static_cast<kPolicy_Entry*>(src);
+      new (dst) kPolicy_Entry(std::move(*old));
+      old->~kPolicy_Entry();
+    }));
+  // clang-format on
+  CWISS_GCC_POP_
+};
+
+template <typename K, typename V, typename Hash = DefaultHash<K>,
+          typename Eq = DefaultEq<K>>
+constexpr const CWISS_Policy& FlatMapPolicy() {
+  return FlatMapPolicyWrapper<K, V, Hash, Eq>::kPolicy;
+}
+
 // Helpers for doing some operations on tables with minimal pain.
 //
 // This macro expands to functions that will form an overload set with other

@@ -30,11 +30,11 @@ namespace {
 
 using benchmark::DoNotOptimize;
 
-CWISS_DECLARE_HASHSET_WITH(StringTable, std::string,
-                           (FlatPolicy<std::string, HashStdString>()));
+CWISS_DECLARE_HASHMAP_WITH(
+    StringTable, std::string, std::string,
+    (FlatMapPolicy<std::string, std::string, HashStdString>()));
 CWISS_DECLARE_HASHSET_WITH(IntTable, int64_t, FlatPolicy<int64_t>());
 
-TABLE_HELPERS(StringTable);
 TABLE_HELPERS(IntTable);
 
 struct StringGen {
@@ -62,9 +62,14 @@ void BM_CacheInSteadyState(benchmark::State& state) {
 
   std::deque<std::string> keys;
   while (StringTable_size(&t) < state.range(0)) {
-    auto [val, inserted] = MoveInsert(t, gen(rng));
+    std::string k = gen(rng);
+    std::string v = gen(rng);
+    auto [it, inserted] = StringTable_deferred_insert(&t, &k);
     if (inserted) {
-      keys.push_back(*val);
+      auto* ptr = StringTable_Iter_get(&it);
+      new (&ptr->key) std::string(std::move(k));
+      new (&ptr->val) std::string(std::move(v));
+      keys.push_back(ptr->key);
     }
   }
 
@@ -77,21 +82,28 @@ void BM_CacheInSteadyState(benchmark::State& state) {
         it = keys.end();
       }
 
-      DoNotOptimize(Find(t, *--it));
+      DoNotOptimize(StringTable_find(&t, &*--it));
     }
 
     // Some cache misses.
     for (int i = 0; i != 10; ++i) {
-      DoNotOptimize(Find(t, gen(rng)));
+      std::string s = gen(rng);
+      DoNotOptimize(StringTable_find(&t, &s));
     }
 
-    CWISS_CHECK(Erase(t, keys.front()), "missing? %s", keys.front().c_str());
+    CWISS_CHECK(StringTable_erase(&t, &keys.front()), "missing? %s",
+                keys.front().c_str());
 
     keys.pop_front();
     while (true) {
-      auto [val, inserted] = MoveInsert(t, gen(rng));
+      std::string k = gen(rng);
+      std::string v = gen(rng);
+      auto [it, inserted] = StringTable_deferred_insert(&t, &k);
       if (inserted) {
-        keys.push_back(*val);
+        auto* ptr = StringTable_Iter_get(&it);
+        new (&ptr->key) std::string(std::move(k));
+        new (&ptr->val) std::string(std::move(v));
+        keys.push_back(ptr->key);
         break;
       }
     }
@@ -119,6 +131,9 @@ void CacheInSteadyStateArgs(Benchmark* bm) {
 }
 BENCHMARK(BM_CacheInSteadyState)->Apply(CacheInSteadyStateArgs);
 
+// This is miscompiled by GCC, so the benchmark will be messed up on that
+// compiler.
+#if !CWISS_IS_GCC
 void BM_EndComparison(benchmark::State& state) {
   std::random_device rd;
   std::mt19937 rng(rd());
@@ -127,23 +142,27 @@ void BM_EndComparison(benchmark::State& state) {
   absl::Cleanup c_ = [&] { StringTable_destroy(&t); };
 
   while (StringTable_size(&t) < state.range(0)) {
-    MoveInsert(t, gen(rng));
+    std::string k = gen(rng);
+    std::string v = gen(rng);
+    auto [it, inserted] = StringTable_deferred_insert(&t, &k);
+    if (inserted) {
+      auto* ptr = StringTable_Iter_get(&it);
+      new (&ptr->key) std::string(std::move(k));
+      new (&ptr->val) std::string(std::move(v));
+    }
   }
 
   for (auto ignored : state) {
     for (auto it = StringTable_iter(&t); StringTable_Iter_get(&it);
          StringTable_Iter_next(&it)) {
-// This is miscompiled by GCC, so the benchmark will be messed up on that
-// compiler.
-#if CWISS_IS_GCC
       DoNotOptimize(it);
-#endif
       DoNotOptimize(t);
       DoNotOptimize(StringTable_Iter_get(&it) != NULL);
     }
   }
 }
 BENCHMARK(BM_EndComparison)->Arg(400);
+#endif
 
 void BM_CopyCtor(benchmark::State& state) {
   std::random_device rd;
