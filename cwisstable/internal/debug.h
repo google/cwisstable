@@ -13,16 +13,16 @@
 // limitations under the License.
 
 // This library provides APIs to debug the probing behavior of hash tables.
-//
-// In general, the probing behavior is a black box for users and only the
-// side effects can be measured in the form of performance differences.
-// These APIs give a glimpse on the actual behavior of the probing algorithms in
-// these hashtables given a specified hash function and a set of elements.
-//
-// The probe count distribution can be used to assess the quality of the hash
-// function for that particular hash table. Note that a hash function that
-// performs well in one hash table implementation does not necessarily performs
-// well in a different one.
+///
+/// In general, the probing behavior is a black box for users and only the
+/// side effects can be measured in the form of performance differences.
+/// These APIs give a glimpse on the actual behavior of the probing algorithms
+/// in these hashtables given a specified hash function and a set of elements.
+///
+/// The probe count distribution can be used to assess the quality of the hash
+/// function for that particular hash table. Note that a hash function that
+/// performs well in one hash table implementation does not necessarily performs
+/// well in a different one.
 
 #ifndef CWISSTABLE_INTERNAL_DEBUG_H_
 #define CWISSTABLE_INTERNAL_DEBUG_H_
@@ -33,24 +33,24 @@
 #include "cwisstable.h"
 
 namespace cwisstable::internal {
-// Returns the number of probes required to lookup `key`.  Returns 0 for a
-// search with no collisions.  Higher values mean more hash collisions occurred;
-// however, the exact meaning of this number varies according to the container
-// type.
+/// Returns the number of probes required to lookup `key`.  Returns 0 for a
+/// search with no collisions.  Higher values mean more hash collisions
+/// occurred; however, the exact meaning of this number varies according to the
+/// container type.
 size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
                                   const CWISS_RawHashSet* set, const void* key);
 
-// Returns the number of bytes requested from the allocator by the container
-// and not freed.
+/// Returns the number of bytes requested from the allocator by the container
+/// and not freed.
 size_t AllocatedByteSize(const CWISS_Policy* policy,
                          const CWISS_RawHashSet* set);
 
-// Returns a tight lower bound for AllocatedByteSize(c) where `c` is of type `C`
-// and `c.size()` is equal to `num_elements`.
+/// Returns a tight lower bound for AllocatedByteSize(c) where `c` is of type
+/// `C` and `c.size()` is equal to `num_elements`.
 size_t LowerBoundAllocatedByteSize(const CWISS_Policy* policy, size_t size);
 
-// Gets a histogram of the number of probes for each elements in the container.
-// The sum of all the values in the vector is equal to container.size().
+/// Gets a histogram of the number of probes for each elements in the container.
+/// The sum of all the values in the vector is equal to container.size().
 std::vector<size_t> GetHashtableDebugNumProbesHistogram(
     const CWISS_Policy* policy, const CWISS_RawHashSet* set);
 
@@ -60,8 +60,8 @@ struct HashtableDebugProbeSummary {
   double mean;
 };
 
-// Gets a summary of the probe count distribution for the elements in the
-// container.
+/// Gets a summary of the probe count distribution for the elements in the
+/// container.
 HashtableDebugProbeSummary GetHashtableDebugProbeSummary(
     const CWISS_Policy* policy, const CWISS_RawHashSet* set);
 }  // namespace cwisstable::internal
