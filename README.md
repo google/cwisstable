@@ -9,6 +9,9 @@ which otherwise struggle with dependency management.
 The public API is currently in flux, as is test coverage, but the C programs in
 the `examples` directory illustrate portions of the API.
 
+Code in this project follows the [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html)
+where applicable; variations due to C are described in [STYLE.md](./STYLE.md).
+
 ## Getting It
 
 > TL;DR: run `./unified.py cwisstable/*.h`, grab `cwisstable.h`, and
