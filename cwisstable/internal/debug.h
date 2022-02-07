@@ -42,8 +42,7 @@ size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
 
 /// Returns the number of bytes requested from the allocator by the container
 /// and not freed.
-size_t AllocatedByteSize(const CWISS_Policy* policy,
-                         const CWISS_RawTable* set);
+size_t AllocatedByteSize(const CWISS_Policy* policy, const CWISS_RawTable* set);
 
 /// Returns a tight lower bound for AllocatedByteSize(c) where `c` is of type
 /// `C` and `c.size()` is equal to `num_elements`.
