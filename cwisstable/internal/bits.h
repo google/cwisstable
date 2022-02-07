@@ -25,8 +25,8 @@
 
 /// Bit manipulation utilities.
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
 
 /// Counts the number of trailing zeroes in the binary representation of `x`.
 CWISS_INLINE_ALWAYS
@@ -233,7 +233,7 @@ static inline bool CWISS_BitMask_next(CWISS_BitMask* self, uint32_t* bit) {
   return true;
 }
 
-CWISS_END_EXTERN_
-CWISS_END_
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_INTERNAL_BITS_H_

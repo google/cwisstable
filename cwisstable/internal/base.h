@@ -30,23 +30,23 @@
 ///   performing synchronization. This is used as a weak entropy source
 ///   elsewhere.
 ///
-/// `extern "C"` support via `CWISS_BEGIN_EXTERN_` and `CWISS_END_EXTERN_`,
+/// `extern "C"` support via `CWISS_BEGIN_EXTERN` and `CWISS_END_EXTERN`,
 /// which open and close an `extern "C"` block in C++ mode.
 #ifdef __cplusplus
   #include <atomic>
   #define CWISS_ATOMIC_T(Type_) std::atomic<Type_>
   #define CWISS_ATOMIC_INC(val_) (val_).fetch_add(1, std::memory_order_relaxed)
 
-  #define CWISS_BEGIN_EXTERN_ extern "C" {
-  #define CWISS_END_EXTERN_ }
+  #define CWISS_BEGIN_EXTERN extern "C" {
+  #define CWISS_END_EXTERN }
 #else
   #include <stdatomic.h>
   #define CWISS_ATOMIC_T(Type_) _Atomic(Type_)
   #define CWISS_ATOMIC_INC(val_) \
     atomic_fetch_add_explicit(&(val_), 1, memory_order_relaxed)
 
-  #define CWISS_BEGIN_EXTERN_
-  #define CWISS_END_EXTERN_
+  #define CWISS_BEGIN_EXTERN
+  #define CWISS_END_EXTERN
 #endif
 
 /// Compiler detection macros.
@@ -75,28 +75,28 @@
 #define CWISS_IS_GCC (CWISS_IS_GCCISH && !CWISS_IS_CLANG)
 #define CWISS_IS_MSVC (CWISS_IS_MSVCISH && !CWISS_IS_CLANG)
 
-#define CWISS_PRAGMA_(pragma_) _Pragma(#pragma_)
+#define CWISS_PRAGMA(pragma_) _Pragma(#pragma_)
 
 #if CWISS_IS_GCCISH
-  #define CWISS_GCC_PUSH_ CWISS_PRAGMA_(GCC diagnostic push)
-  #define CWISS_GCC_ALLOW_(w_) CWISS_PRAGMA_(GCC diagnostic ignored w_)
-  #define CWISS_GCC_POP_ CWISS_PRAGMA_(GCC diagnostic pop)
+  #define CWISS_GCC_PUSH CWISS_PRAGMA(GCC diagnostic push)
+  #define CWISS_GCC_ALLOW(w_) CWISS_PRAGMA(GCC diagnostic ignored w_)
+  #define CWISS_GCC_POP CWISS_PRAGMA(GCC diagnostic pop)
 #else
-  #define CWISS_GCC_PUSH_
-  #define CWISS_GCC_ALLOW_(warning)
-  #define CWISS_GCC_POP_
+  #define CWISS_GCC_PUSH
+  #define CWISS_GCC_ALLOW(w_)
+  #define CWISS_GCC_POP
 #endif
 
 /// Warning control around `CWISS` symbol definitions. These macros will
 /// disable certain false-positive warnings that `CWISS` definitions tend to
 /// emit.
-#define CWISS_BEGIN_                     \
-  CWISS_GCC_PUSH_                        \
-  CWISS_GCC_ALLOW_("-Wunused-function")  \
-  CWISS_GCC_ALLOW_("-Wunused-parameter") \
-  CWISS_GCC_ALLOW_("-Wcast-qual")        \
-  CWISS_GCC_ALLOW_("-Wmissing-field-initializers")
-#define CWISS_END_ CWISS_GCC_POP_
+#define CWISS_BEGIN                     \
+  CWISS_GCC_PUSH                        \
+  CWISS_GCC_ALLOW("-Wunused-function")  \
+  CWISS_GCC_ALLOW("-Wunused-parameter") \
+  CWISS_GCC_ALLOW("-Wcast-qual")        \
+  CWISS_GCC_ALLOW("-Wmissing-field-initializers")
+#define CWISS_END CWISS_GCC_POP
 
 /// `CWISS_HAVE_SSE2` is nonzero if we have SSE2 support.
 ///

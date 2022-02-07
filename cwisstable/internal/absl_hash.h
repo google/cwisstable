@@ -24,8 +24,8 @@
 
 /// Implementation details of AbslHash.
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
 
 static inline uint64_t CWISS_AbslHash_LowLevelMix(uint64_t v0, uint64_t v1) {
 #ifndef __aarch64__
@@ -163,7 +163,7 @@ static uint64_t CWISS_AbslHash_Hash64(const void* val, size_t len) {
                                      CWISS_AbslHash_kHashSalt);
 }
 
-CWISS_END_EXTERN_
-CWISS_END_
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_INTERNAL_ABSL_HASH_H_

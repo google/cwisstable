@@ -29,8 +29,8 @@
 /// "Probing" refers to the process of trying to find the matching entry for a
 /// given lookup by repeatedly searching for values throughout the table.
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
 
 /// The state for a probe sequence.
 ///
@@ -130,7 +130,7 @@ static inline CWISS_FindInfo CWISS_find_first_non_full(const CWISS_ctrl_t* ctrl,
   }
 }
 
-CWISS_END_EXTERN_
-CWISS_END_
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_INTERNAL_PROBE_H_

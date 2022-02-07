@@ -54,8 +54,8 @@
 /// See `set_api.h` and `map_api.h` for detailed listings of what the generated
 /// APIs look like.
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
 
 /// Generates a new hash set type with inline storage and the default
 /// plain-old-data policies.
@@ -124,7 +124,7 @@ CWISS_BEGIN_EXTERN_
 /// in the `_by_` prefix on the names, as well as the names of the extension
 /// point functions.
 #define CWISS_DECLARE_LOOKUP_NAMED(HashSet_, LookupName_, Key_)                \
-  CWISS_BEGIN_                                                                 \
+  CWISS_BEGIN                                                                 \
   static inline size_t HashSet_##_##LookupName_##_SyntheticHash(               \
       const void* val) {                                                       \
     return HashSet_##_##LookupName_##_hash((const Key_*)val);                  \
@@ -191,7 +191,7 @@ CWISS_BEGIN_EXTERN_
                                   &self->set_, key);                           \
   }                                                                            \
                                                                                \
-  CWISS_END_                                                                   \
+  CWISS_END                                                                   \
   /* Force a semicolon. */                                                     \
   struct HashSet_##_##LookupName_##_NeedsTrailingSemicolon_ {                  \
     int x;                                                                     \
@@ -200,7 +200,7 @@ CWISS_BEGIN_EXTERN_
 // ---- PUBLIC API ENDS HERE! ----
 
 #define CWISS_DECLARE_COMMON_(HashSet_, Type_, Key_, kPolicy_)                 \
-  CWISS_BEGIN_                                                                 \
+  CWISS_BEGIN                                                                 \
   static inline const CWISS_Policy* HashSet_##_policy(void) {                  \
     return &kPolicy_;                                                          \
   }                                                                            \
@@ -323,10 +323,10 @@ CWISS_BEGIN_EXTERN_
     return CWISS_RawHashSet_erase(&kPolicy_, kPolicy_.key, &self->set_, key);  \
   }                                                                            \
                                                                                \
-  CWISS_END_                                                                   \
+  CWISS_END                                                                   \
   /* Force a semicolon. */ struct HashSet_##_NeedsTrailingSemicolon_ { int x; }
 
-CWISS_END_EXTERN_
-CWISS_END_
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_DECLARE_H_

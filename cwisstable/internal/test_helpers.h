@@ -49,8 +49,8 @@ struct DefaultEq {
 
 template <typename T, typename Hash, typename Eq>
 struct FlatPolicyWrapper {
-  CWISS_GCC_PUSH_
-  CWISS_GCC_ALLOW_("-Waddress")
+  CWISS_GCC_PUSH
+  CWISS_GCC_ALLOW("-Waddress")
   // clang-format off
   CWISS_DECLARE_FLAT_SET_POLICY(kPolicy, T,
     (modifiers, static constexpr),
@@ -72,7 +72,7 @@ struct FlatPolicyWrapper {
       old->~T();
     }));
   // clang-format on
-  CWISS_GCC_POP_
+  CWISS_GCC_POP
 };
 
 template <typename T, typename Hash = DefaultHash<T>,
@@ -83,8 +83,8 @@ constexpr const CWISS_Policy& FlatPolicy() {
 
 template <typename K, typename V, typename Hash, typename Eq>
 struct FlatMapPolicyWrapper {
-  CWISS_GCC_PUSH_
-  CWISS_GCC_ALLOW_("-Waddress")
+  CWISS_GCC_PUSH
+  CWISS_GCC_ALLOW("-Waddress")
   // clang-format off
   CWISS_DECLARE_FLAT_MAP_POLICY(kPolicy, K, V,
     (modifiers, static constexpr),
@@ -107,7 +107,7 @@ struct FlatMapPolicyWrapper {
       old->~kPolicy_Entry();
     }));
   // clang-format on
-  CWISS_GCC_POP_
+  CWISS_GCC_POP
 };
 
 template <typename K, typename V, typename Hash = DefaultHash<K>,

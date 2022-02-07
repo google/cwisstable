@@ -76,8 +76,8 @@
 /// For "common" uses, where the key and value are plain-old-data, `declare.h`
 /// has dedicated macros, and fussing with policies directly is unnecessary.
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
 
 /// A policy describing the basic laying properties of a type.
 ///
@@ -244,7 +244,7 @@ typedef struct {
 // ---- PUBLIC API ENDS HERE! ----
 
 #define CWISS_DECLARE_POLICY_(kPolicy_, Type_, Key_, ...)                \
-  CWISS_BEGIN_                                                           \
+  CWISS_BEGIN                                                           \
   CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
   inline void kPolicy_##_DefaultCopy(void* dst, const void* src) {       \
     memcpy(dst, src, sizeof(Type_));                                     \
@@ -301,7 +301,7 @@ typedef struct {
                     __VA_ARGS__),                                        \
       CWISS_EXTRACT(slot_get, kPolicy_##_DefaultSlotGet, __VA_ARGS__),   \
   };                                                                     \
-  CWISS_END_                                                             \
+  CWISS_END                                                             \
   CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
   const CWISS_Policy kPolicy_ = {                                        \
       &kPolicy_##_ObjectPolicy,                                          \
@@ -311,7 +311,7 @@ typedef struct {
   }
 
 #define CWISS_DECLARE_NODE_FUNCTIONS_(kPolicy_, Type_, ...)                    \
-  CWISS_BEGIN_                                                                 \
+  CWISS_BEGIN                                                                 \
   static inline void kPolicy_##_NodeSlotInit(void* slot) {                     \
     void* node = CWISS_EXTRACT(alloc_alloc, CWISS_DefaultMalloc, __VA_ARGS__)( \
         sizeof(Type_), alignof(Type_));                                        \
@@ -331,7 +331,7 @@ typedef struct {
   static inline void* kPolicy_##_NodeSlotGet(void* slot) {                     \
     return *((void**)slot);                                                    \
   }                                                                            \
-  CWISS_END_
+  CWISS_END
 
 #define CWISS_NODE_OVERRIDES_(kPolicy_)                     \
   (slot_size, sizeof(void*)), (slot_align, alignof(void*)), \
@@ -349,7 +349,7 @@ static inline void CWISS_DefaultFree(void* array, size_t size, size_t align) {
   free(array);
 }
 
-CWISS_END_EXTERN_
-CWISS_END_
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_POLICY_H_

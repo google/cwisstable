@@ -24,8 +24,8 @@
 #include "cwisstable/internal/base.h"
 #include "cwisstable/internal/bits.h"
 
-CWISS_BEGIN_
-CWISS_BEGIN_EXTERN_
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
 
 /// Control bytes and groups: the core of SwissTable optimization.
 ///
@@ -308,7 +308,7 @@ static inline void CWISS_Group_ConvertSpecialToEmptyAndFullToDeleted(
 }
 #endif  // CWISS_HAVE_SSE2
 
-CWISS_END_EXTERN_
-CWISS_END_
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_INTERNAL_CTRL_H_
