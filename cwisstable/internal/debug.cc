@@ -33,8 +33,7 @@
 
 namespace cwisstable::internal {
 size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
-                                  const CWISS_RawTable* set,
-                                  const void* key) {
+                                  const CWISS_RawTable* set, const void* key) {
   size_t num_probes = 0;
   size_t hash = policy->key->hash(key);
   auto seq = CWISS_ProbeSeq_Start(set->ctrl_, hash, set->capacity_);
