@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CWISSTABLE_INTERNAL_RAW_HASH_SET_H_
-#define CWISSTABLE_INTERNAL_RAW_HASH_SET_H_
+#ifndef CWISSTABLE_INTERNAL_RAW_TABLE_H_
+#define CWISSTABLE_INTERNAL_RAW_TABLE_H_
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -24,18 +24,18 @@
 #include "cwisstable/internal/base.h"
 #include "cwisstable/internal/bits.h"
 #include "cwisstable/internal/capacity.h"
-#include "cwisstable/internal/ctrl.h"
+#include "cwisstable/internal/control_byte.h"
 #include "cwisstable/internal/probe.h"
 #include "cwisstable/policy.h"
 
 /// The SwissTable implementation.
 ///
-/// `CWISS_RawHashSet` is the core data structure that all SwissTables wrap.
+/// `CWISS_RawTable` is the core data structure that all SwissTables wrap.
 ///
 /// All functions in this header take a `const CWISS_Policy*`, which describes
 /// how to manipulate the elements in a table. The same pointer (i.e., same
 /// address and provenance) passed to the function that created the
-/// `CWISS_RawHashSet` MUST be passed to all subsequent function calls, and it
+/// `CWISS_RawTable` MUST be passed to all subsequent function calls, and it
 /// must not be mutated at any point between those calls. Failure to adhere to
 /// these requirements is UB.
 ///
@@ -45,6 +45,8 @@ CWISS_BEGIN
 CWISS_BEGIN_EXTERN
 
 /// A SwissTable.
+///
+/// This is absl::container_internal::raw_hash_set in Abseil.
 typedef struct {
   /// The control bytes (and, also, a pointer to the base of the backing array).
   ///
@@ -60,11 +62,11 @@ typedef struct {
   /// The number of slots we can still fill before a rehash. See
   /// `CWISS_CapacityToGrowth()`.
   size_t growth_left_;
-} CWISS_RawHashSet;
+} CWISS_RawTable;
 
 /// Prints full details about the internal state of `self` to `stderr`.
-static inline void CWISS_RawHashSet_dump(const CWISS_Policy* policy,
-                                         const CWISS_RawHashSet* self) {
+static inline void CWISS_RawTable_dump(const CWISS_Policy* policy,
+                                         const CWISS_RawTable* self) {
   fprintf(stderr, "ptr: %p, len: %zu, cap: %zu, growth: %zu\n", self->ctrl_,
           self->size_, self->capacity_, self->growth_left_);
   if (self->capacity_ == 0) {
@@ -122,7 +124,7 @@ static inline void CWISS_RawHashSet_dump(const CWISS_Policy* policy,
 ///   in the latter case.
 /// - `ctrl_` always points to a full slot.
 typedef struct {
-  CWISS_RawHashSet* set_;
+  CWISS_RawTable* set_;
   CWISS_ControlByte* ctrl_;
   char* slot_;
 } CWISS_RawIter;
@@ -148,8 +150,8 @@ static inline void CWISS_RawIter_SkipEmptyOrDeleted(const CWISS_Policy* policy,
 }
 
 /// Creates a valid iterator starting at the `index`th slot.
-static inline CWISS_RawIter CWISS_RawHashSet_iter_at(const CWISS_Policy* policy,
-                                                     CWISS_RawHashSet* self,
+static inline CWISS_RawIter CWISS_RawTable_iter_at(const CWISS_Policy* policy,
+                                                     CWISS_RawTable* self,
                                                      size_t index) {
   CWISS_RawIter iter = {
       self,
@@ -162,22 +164,22 @@ static inline CWISS_RawIter CWISS_RawHashSet_iter_at(const CWISS_Policy* policy,
 }
 
 /// Creates an iterator for `self`.
-static inline CWISS_RawIter CWISS_RawHashSet_iter(const CWISS_Policy* policy,
-                                                  CWISS_RawHashSet* self) {
-  return CWISS_RawHashSet_iter_at(policy, self, 0);
+static inline CWISS_RawIter CWISS_RawTable_iter(const CWISS_Policy* policy,
+                                                  CWISS_RawTable* self) {
+  return CWISS_RawTable_iter_at(policy, self, 0);
 }
 
 /// Creates a valid iterator starting at the `index`th slot, accepting a `const`
 /// pointer instead.
-static inline CWISS_RawIter CWISS_RawHashSet_citer_at(
-    const CWISS_Policy* policy, const CWISS_RawHashSet* self, size_t index) {
-  return CWISS_RawHashSet_iter_at(policy, (CWISS_RawHashSet*)self, index);
+static inline CWISS_RawIter CWISS_RawTable_citer_at(
+    const CWISS_Policy* policy, const CWISS_RawTable* self, size_t index) {
+  return CWISS_RawTable_iter_at(policy, (CWISS_RawTable*)self, index);
 }
 
 /// Creates an iterator for `self`, accepting a `const` pointer instead.
-static inline CWISS_RawIter CWISS_RawHashSet_citer(
-    const CWISS_Policy* policy, const CWISS_RawHashSet* self) {
-  return CWISS_RawHashSet_iter(policy, (CWISS_RawHashSet*)self);
+static inline CWISS_RawIter CWISS_RawTable_citer(
+    const CWISS_Policy* policy, const CWISS_RawTable* self) {
+  return CWISS_RawTable_iter(policy, (CWISS_RawTable*)self);
 }
 
 /// Returns a pointer into the currently pointed-to slot (*not* to the slot
@@ -208,7 +210,7 @@ static inline void* CWISS_RawIter_next(const CWISS_Policy* policy,
 }
 
 /// Erases, but does not destroy, the value pointed to by `it`.
-static inline void CWISS_RawHashSet_EraseMetaOnly(const CWISS_Policy* policy,
+static inline void CWISS_RawTable_EraseMetaOnly(const CWISS_Policy* policy,
                                                   CWISS_RawIter it) {
   CWISS_DCHECK(CWISS_IsFull(*it.ctrl_), "erasing a dangling iterator");
   --it.set_->size_;
@@ -236,8 +238,8 @@ static inline void CWISS_RawHashSet_EraseMetaOnly(const CWISS_Policy* policy,
 
 /// Computes a lower bound for the expected available growth and applies it to
 /// `self_`.
-static inline void CWISS_RawHashSet_ResetGrowthLeft(const CWISS_Policy* policy,
-                                                    CWISS_RawHashSet* self) {
+static inline void CWISS_RawTable_ResetGrowthLeft(const CWISS_Policy* policy,
+                                                    CWISS_RawTable* self) {
   self->growth_left_ = CWISS_CapacityToGrowth(self->capacity_) - self->size_;
 }
 
@@ -246,8 +248,8 @@ static inline void CWISS_RawHashSet_ResetGrowthLeft(const CWISS_Policy* policy,
 /// allocation.
 ///
 /// This does not free the currently held array; `capacity_` must be nonzero.
-static inline void CWISS_RawHashSet_InitializeSlots(const CWISS_Policy* policy,
-                                                    CWISS_RawHashSet* self) {
+static inline void CWISS_RawTable_InitializeSlots(const CWISS_Policy* policy,
+                                                    CWISS_RawTable* self) {
   CWISS_DCHECK(self->capacity_, "capacity should be nonzero");
   // Folks with custom allocators often make unwarranted assumptions about the
   // behavior of their classes vis-a-vis trivial destructability and what
@@ -277,15 +279,15 @@ static inline void CWISS_RawHashSet_InitializeSlots(const CWISS_Policy* policy,
   self->slots_ = mem + CWISS_SlotOffset(self->capacity_, policy->slot->align);
   CWISS_ResetCtrl(self->capacity_, self->ctrl_, self->slots_,
                   policy->slot->size);
-  CWISS_RawHashSet_ResetGrowthLeft(policy, self);
+  CWISS_RawTable_ResetGrowthLeft(policy, self);
 
   // infoz().RecordStorageChanged(size_, capacity_);
 }
 
 /// Destroys all slots in the backing array, frees the backing array, and clears
 /// all top-level book-keeping data.
-static inline void CWISS_RawHashSet_DestroySlots(const CWISS_Policy* policy,
-                                                 CWISS_RawHashSet* self) {
+static inline void CWISS_RawTable_DestroySlots(const CWISS_Policy* policy,
+                                                 CWISS_RawTable* self) {
   if (!self->capacity_) return;
 
   if (policy->slot->del != NULL) {
@@ -308,8 +310,8 @@ static inline void CWISS_RawHashSet_DestroySlots(const CWISS_Policy* policy,
 }
 
 /// Grows the table to the given capacity, triggering a rehash.
-static inline void CWISS_RawHashSet_Resize(const CWISS_Policy* policy,
-                                           CWISS_RawHashSet* self,
+static inline void CWISS_RawTable_Resize(const CWISS_Policy* policy,
+                                           CWISS_RawTable* self,
                                            size_t new_capacity) {
   CWISS_DCHECK(CWISS_IsValidCapacity(new_capacity), "invalid capacity: %zu",
                new_capacity);
@@ -318,7 +320,7 @@ static inline void CWISS_RawHashSet_Resize(const CWISS_Policy* policy,
   char* old_slots = self->slots_;
   const size_t old_capacity = self->capacity_;
   self->capacity_ = new_capacity;
-  CWISS_RawHashSet_InitializeSlots(policy, self);
+  CWISS_RawTable_InitializeSlots(policy, self);
 
   size_t total_probe_length = 0;
   for (size_t i = 0; i != old_capacity; ++i) {
@@ -349,10 +351,10 @@ static inline void CWISS_RawHashSet_Resize(const CWISS_Policy* policy,
 
 /// Prunes control bits to remove as many tombstones as possible.
 ///
-/// See the comment on `CWISS_RawHashSet_rehash_and_grow_if_necessary()`.
+/// See the comment on `CWISS_RawTable_rehash_and_grow_if_necessary()`.
 CWISS_INLINE_NEVER
-static void CWISS_RawHashSet_DropDeletesWithoutResize(
-    const CWISS_Policy* policy, CWISS_RawHashSet* self) {
+static void CWISS_RawTable_DropDeletesWithoutResize(
+    const CWISS_Policy* policy, CWISS_RawTable* self) {
   CWISS_DCHECK(CWISS_IsValidCapacity(self->capacity_), "invalid capacity: %zu",
                self->capacity_);
   CWISS_DCHECK(!CWISS_IsSmall(self->capacity_),
@@ -431,7 +433,7 @@ static void CWISS_RawHashSet_DropDeletesWithoutResize(
     }
 #undef CWISS_ProbeSeq_Start_index
   }
-  CWISS_RawHashSet_ResetGrowthLeft(policy, self);
+  CWISS_RawTable_ResetGrowthLeft(policy, self);
   policy->alloc->free(slot, policy->slot->size, policy->slot->align);
   // infoz().RecordRehash(total_probe_length);
 }
@@ -441,10 +443,10 @@ static void CWISS_RawHashSet_DropDeletesWithoutResize(
 /// This function is an optimization opportunity to perform a rehash even when
 /// growth is unnecessary, because vacating tombstones is beneficial for
 /// performance in the long-run.
-static inline void CWISS_RawHashSet_rehash_and_grow_if_necessary(
-    const CWISS_Policy* policy, CWISS_RawHashSet* self) {
+static inline void CWISS_RawTable_rehash_and_grow_if_necessary(
+    const CWISS_Policy* policy, CWISS_RawTable* self) {
   if (self->capacity_ == 0) {
-    CWISS_RawHashSet_Resize(policy, self, 1);
+    CWISS_RawTable_Resize(policy, self, 1);
   } else if (self->capacity_ > CWISS_Group_kWidth &&
              // Do these calculations in 64-bit to avoid overflow.
              self->size_ * UINT64_C(32) <= self->capacity_ * UINT64_C(25)) {
@@ -489,18 +491,18 @@ static inline void CWISS_RawHashSet_rehash_and_grow_if_necessary(
     //  762 | 149836       0.37        13 | 148559       0.74       190
     //  807 | 149736       0.39        14 | 151107       0.39        14
     //  852 | 150204       0.42        15 | 151019       0.42        15
-    CWISS_RawHashSet_DropDeletesWithoutResize(policy, self);
+    CWISS_RawTable_DropDeletesWithoutResize(policy, self);
   } else {
     // Otherwise grow the container.
-    CWISS_RawHashSet_Resize(policy, self, self->capacity_ * 2 + 1);
+    CWISS_RawTable_Resize(policy, self, self->capacity_ * 2 + 1);
   }
 }
 
 /// Prefetches the backing array to dodge potential TLB misses.
 /// This is intended to overlap with execution of calculating the hash for a
 /// key.
-static inline void CWISS_RawHashSet_PrefetchHeapBlock(
-    const CWISS_Policy* policy, const CWISS_RawHashSet* self) {
+static inline void CWISS_RawTable_PrefetchHeapBlock(
+    const CWISS_Policy* policy, const CWISS_RawTable* self) {
   CWISS_PREFETCH(self->ctrl_, 1);
 }
 
@@ -509,12 +511,12 @@ static inline void CWISS_RawHashSet_PrefetchHeapBlock(
 ///
 /// NOTE: This is a very low level operation and should not be used without
 /// specific benchmarks indicating its importance.
-static inline void CWISS_RawHashSet_Prefetch(const CWISS_Policy* policy,
-                                             const CWISS_RawHashSet* self,
+static inline void CWISS_RawTable_Prefetch(const CWISS_Policy* policy,
+                                             const CWISS_RawTable* self,
                                              const void* key) {
   (void)key;
 #if CWISS_HAVE_PREFETCH
-  CWISS_RawHashSet_PrefetchHeapBlock(policy, self);
+  CWISS_RawTable_PrefetchHeapBlock(policy, self);
   CWISS_ProbeSeq seq = CWISS_ProbeSeq_Start(self->ctrl_, policy->key->hash(key),
                                             self->capacity_);
   CWISS_PREFETCH(self->ctrl_ + seq.offset_, 3);
@@ -522,7 +524,7 @@ static inline void CWISS_RawHashSet_Prefetch(const CWISS_Policy* policy,
 #endif
 }
 
-/// The return type of `CWISS_RawHashSet_PrepareInsert()`.
+/// The return type of `CWISS_RawTable_PrepareInsert()`.
 typedef struct {
   size_t index;
   bool inserted;
@@ -533,14 +535,14 @@ typedef struct {
 ///
 /// If the table does not actually have space, UB.
 CWISS_INLINE_NEVER
-static size_t CWISS_RawHashSet_PrepareInsert(const CWISS_Policy* policy,
-                                             CWISS_RawHashSet* self,
+static size_t CWISS_RawTable_PrepareInsert(const CWISS_Policy* policy,
+                                             CWISS_RawTable* self,
                                              size_t hash) {
   CWISS_FindInfo target =
       CWISS_FindFirstNonFull(self->ctrl_, hash, self->capacity_);
   if (CWISS_UNLIKELY(self->growth_left_ == 0 &&
                      !CWISS_IsDeleted(self->ctrl_[target.offset]))) {
-    CWISS_RawHashSet_rehash_and_grow_if_necessary(policy, self);
+    CWISS_RawTable_rehash_and_grow_if_necessary(policy, self);
     target = CWISS_FindFirstNonFull(self->ctrl_, hash, self->capacity_);
   }
   ++self->size_;
@@ -553,10 +555,10 @@ static size_t CWISS_RawHashSet_PrepareInsert(const CWISS_Policy* policy,
 
 /// Attempts to find `key` in the table; if it isn't found, returns where to
 /// insert it, instead.
-static inline CWISS_PrepareInsert CWISS_RawHashSet_FindOrPrepareInsert(
+static inline CWISS_PrepareInsert CWISS_RawTable_FindOrPrepareInsert(
     const CWISS_Policy* policy, const CWISS_KeyPolicy* key_policy,
-    CWISS_RawHashSet* self, const void* key) {
-  CWISS_RawHashSet_PrefetchHeapBlock(policy, self);
+    CWISS_RawTable* self, const void* key) {
+  CWISS_RawTable_PrefetchHeapBlock(policy, self);
   size_t hash = key_policy->hash(key);
   CWISS_ProbeSeq seq = CWISS_ProbeSeq_Start(self->ctrl_, hash, self->capacity_);
   while (true) {
@@ -574,15 +576,15 @@ static inline CWISS_PrepareInsert CWISS_RawHashSet_FindOrPrepareInsert(
     CWISS_DCHECK(seq.index_ <= self->capacity_, "full table!");
   }
   return (CWISS_PrepareInsert){
-      CWISS_RawHashSet_PrepareInsert(policy, self, hash), true};
+      CWISS_RawTable_PrepareInsert(policy, self, hash), true};
 }
 
 /// Prepares a slot to insert an element into.
 ///
 /// This function does all the work of calling the appropriate policy functions
 /// to initialize the slot.
-static inline void* CWISS_RawHashSet_PreInsert(const CWISS_Policy* policy,
-                                               CWISS_RawHashSet* self,
+static inline void* CWISS_RawTable_PreInsert(const CWISS_Policy* policy,
+                                               CWISS_RawTable* self,
                                                size_t i) {
   void* dst = self->slots_ + i * policy->slot->size;
   policy->slot->init(dst);
@@ -590,15 +592,15 @@ static inline void* CWISS_RawHashSet_PreInsert(const CWISS_Policy* policy,
 }
 
 /// Creates a new empty table with the given capacity.
-static inline CWISS_RawHashSet CWISS_RawHashSet_new(const CWISS_Policy* policy,
+static inline CWISS_RawTable CWISS_RawTable_new(const CWISS_Policy* policy,
                                                     size_t capacity) {
-  CWISS_RawHashSet self = {
+  CWISS_RawTable self = {
       .ctrl_ = CWISS_EmptyGroup(),
   };
 
   if (capacity != 0) {
     self.capacity_ = CWISS_NormalizeCapacity(capacity);
-    CWISS_RawHashSet_InitializeSlots(policy, &self);
+    CWISS_RawTable_InitializeSlots(policy, &self);
   }
 
   return self;
@@ -606,14 +608,14 @@ static inline CWISS_RawHashSet CWISS_RawHashSet_new(const CWISS_Policy* policy,
 
 /// Ensures that at least `n` more elements can be inserted without a resize
 /// (although this function my itself resize and rehash the table).
-static inline void CWISS_RawHashSet_reserve(const CWISS_Policy* policy,
-                                            CWISS_RawHashSet* self, size_t n) {
+static inline void CWISS_RawTable_reserve(const CWISS_Policy* policy,
+                                            CWISS_RawTable* self, size_t n) {
   if (n <= self->size_ + self->growth_left_) {
     return;
   }
 
   n = CWISS_NormalizeCapacity(CWISS_GrowthToLowerboundCapacity(n));
-  CWISS_RawHashSet_Resize(policy, self, n);
+  CWISS_RawTable_Resize(policy, self, n);
 
   // This is after resize, to ensure that we have completed the allocation
   // and have potentially sampled the hashtable.
@@ -621,17 +623,17 @@ static inline void CWISS_RawHashSet_reserve(const CWISS_Policy* policy,
 }
 
 /// Creates a duplicate of this table.
-static inline CWISS_RawHashSet CWISS_RawHashSet_dup(
-    const CWISS_Policy* policy, const CWISS_RawHashSet* self) {
-  CWISS_RawHashSet copy = CWISS_RawHashSet_new(policy, 0);
+static inline CWISS_RawTable CWISS_RawTable_dup(
+    const CWISS_Policy* policy, const CWISS_RawTable* self) {
+  CWISS_RawTable copy = CWISS_RawTable_new(policy, 0);
 
-  CWISS_RawHashSet_reserve(policy, &copy, self->size_);
+  CWISS_RawTable_reserve(policy, &copy, self->size_);
   // Because the table is guaranteed to be empty, we can do something faster
   // than a full `insert`. In particular we do not need to take a trip to
-  // `CWISS_RawHashSet_rehash_and_grow_if_necessary()` because we are already
+  // `CWISS_RawTable_rehash_and_grow_if_necessary()` because we are already
   // big enough (since `self` is a priori) and tombstones cannot be created
   // during this process.
-  for (CWISS_RawIter iter = CWISS_RawHashSet_citer(policy, self);
+  for (CWISS_RawIter iter = CWISS_RawTable_citer(policy, self);
        CWISS_RawIter_get(policy, &iter); CWISS_RawIter_next(policy, &iter)) {
     void* v = CWISS_RawIter_get(policy, &iter);
     size_t hash = policy->key->hash(v);
@@ -640,7 +642,7 @@ static inline CWISS_RawHashSet CWISS_RawHashSet_dup(
         CWISS_FindFirstNonFull(copy.ctrl_, hash, copy.capacity_);
     CWISS_SetCtrl(target.offset, CWISS_H2(hash), copy.capacity_, copy.ctrl_,
                   copy.slots_, policy->slot->size);
-    void* slot = CWISS_RawHashSet_PreInsert(policy, &copy, target.offset);
+    void* slot = CWISS_RawTable_PreInsert(policy, &copy, target.offset);
     policy->obj->copy(slot, v);
     // infoz().RecordInsert(hash, target.probe_length);
   }
@@ -650,33 +652,33 @@ static inline CWISS_RawHashSet CWISS_RawHashSet_dup(
 }
 
 /// Destroys this table, destroying its elements and freeing the backing array.
-static inline void CWISS_RawHashSet_destroy(const CWISS_Policy* policy,
-                                            CWISS_RawHashSet* self) {
-  CWISS_RawHashSet_DestroySlots(policy, self);
+static inline void CWISS_RawTable_destroy(const CWISS_Policy* policy,
+                                            CWISS_RawTable* self) {
+  CWISS_RawTable_DestroySlots(policy, self);
 }
 
 /// Returns whether the table is empty.
-static inline bool CWISS_RawHashSet_empty(const CWISS_Policy* policy,
-                                          const CWISS_RawHashSet* self) {
+static inline bool CWISS_RawTable_empty(const CWISS_Policy* policy,
+                                          const CWISS_RawTable* self) {
   return !self->size_;
 }
 
 /// Returns the number of elements in the table.
-static inline size_t CWISS_RawHashSet_size(const CWISS_Policy* policy,
-                                           const CWISS_RawHashSet* self) {
+static inline size_t CWISS_RawTable_size(const CWISS_Policy* policy,
+                                           const CWISS_RawTable* self) {
   return self->size_;
 }
 
 /// Returns the total capacity of the table, which is different from the number
 /// of elements that would cause it to get resized.
-static inline size_t CWISS_RawHashSet_capacity(const CWISS_Policy* policy,
-                                               const CWISS_RawHashSet* self) {
+static inline size_t CWISS_RawTable_capacity(const CWISS_Policy* policy,
+                                               const CWISS_RawTable* self) {
   return self->capacity_;
 }
 
 /// Clears the table, erasing every element contained therein.
-static inline void CWISS_RawHashSet_clear(const CWISS_Policy* policy,
-                                          CWISS_RawHashSet* self) {
+static inline void CWISS_RawTable_clear(const CWISS_Policy* policy,
+                                          CWISS_RawTable* self) {
   // Iterating over this container is O(bucket_count()). When bucket_count()
   // is much greater than size(), iteration becomes prohibitively expensive.
   // For clear() it is more important to reuse the allocated array when the
@@ -685,7 +687,7 @@ static inline void CWISS_RawHashSet_clear(const CWISS_Policy* policy,
   // largest bucket_count() threshold for which iteration is still fast and
   // past that we simply deallocate the array.
   if (self->capacity_ > 127) {
-    CWISS_RawHashSet_DestroySlots(policy, self);
+    CWISS_RawTable_DestroySlots(policy, self);
 
     // infoz().RecordClearedReservation();
   } else if (self->capacity_) {
@@ -700,13 +702,13 @@ static inline void CWISS_RawHashSet_clear(const CWISS_Policy* policy,
     self->size_ = 0;
     CWISS_ResetCtrl(self->capacity_, self->ctrl_, self->slots_,
                     policy->slot->size);
-    CWISS_RawHashSet_ResetGrowthLeft(policy, self);
+    CWISS_RawTable_ResetGrowthLeft(policy, self);
   }
   CWISS_DCHECK(!self->size_, "size was still nonzero");
   // infoz().RecordStorageChanged(0, capacity_);
 }
 
-/// The return type of `CWISS_RawHashSet_insert()`.
+/// The return type of `CWISS_RawTable_insert()`.
 typedef struct {
   /// An iterator referring to the relevant element.
   CWISS_RawIter iter;
@@ -718,7 +720,7 @@ typedef struct {
 /// "Inserts" `val` into the table if it isn't already present.
 ///
 /// This function does not perform insertion; it behaves exactly like
-/// `CWISS_RawHashSet_insert()` up until it would copy-initialize the new
+/// `CWISS_RawTable_insert()` up until it would copy-initialize the new
 /// element, instead returning a valid iterator pointing to uninitialized data.
 ///
 /// This allows, for example, lazily constructing the parts of the element that
@@ -729,16 +731,16 @@ typedef struct {
 ///
 /// `key_policy` is a possibly heterogenous key policy for comparing `key`'s
 /// type to types in the map. `key_policy` may be `&policy->key`.
-static inline CWISS_Insert CWISS_RawHashSet_deferred_insert(
+static inline CWISS_Insert CWISS_RawTable_deferred_insert(
     const CWISS_Policy* policy, const CWISS_KeyPolicy* key_policy,
-    CWISS_RawHashSet* self, const void* key) {
+    CWISS_RawTable* self, const void* key) {
   CWISS_PrepareInsert res =
-      CWISS_RawHashSet_FindOrPrepareInsert(policy, key_policy, self, key);
+      CWISS_RawTable_FindOrPrepareInsert(policy, key_policy, self, key);
 
   if (res.inserted) {
-    CWISS_RawHashSet_PreInsert(policy, self, res.index);
+    CWISS_RawTable_PreInsert(policy, self, res.index);
   }
-  return (CWISS_Insert){CWISS_RawHashSet_citer_at(policy, self, res.index),
+  return (CWISS_Insert){CWISS_RawTable_citer_at(policy, self, res.index),
                         res.inserted};
 }
 
@@ -746,17 +748,17 @@ static inline CWISS_Insert CWISS_RawHashSet_deferred_insert(
 ///
 /// Returns an iterator pointing to the element in the map and whether it was
 /// just inserted or was already present.
-static inline CWISS_Insert CWISS_RawHashSet_insert(const CWISS_Policy* policy,
-                                                   CWISS_RawHashSet* self,
+static inline CWISS_Insert CWISS_RawTable_insert(const CWISS_Policy* policy,
+                                                   CWISS_RawTable* self,
                                                    const void* val) {
   CWISS_PrepareInsert res =
-      CWISS_RawHashSet_FindOrPrepareInsert(policy, policy->key, self, val);
+      CWISS_RawTable_FindOrPrepareInsert(policy, policy->key, self, val);
 
   if (res.inserted) {
-    void* slot = CWISS_RawHashSet_PreInsert(policy, self, res.index);
+    void* slot = CWISS_RawTable_PreInsert(policy, self, res.index);
     policy->obj->copy(slot, val);
   }
-  return (CWISS_Insert){CWISS_RawHashSet_citer_at(policy, self, res.index),
+  return (CWISS_Insert){CWISS_RawTable_citer_at(policy, self, res.index),
                         res.inserted};
 }
 
@@ -767,9 +769,9 @@ static inline CWISS_Insert CWISS_RawHashSet_insert(const CWISS_Policy* policy,
 /// type to types in the map. `key_policy` may be `&policy->key`.
 ///
 /// If `hash` is not actually the hash of `key`, UB.
-static inline CWISS_RawIter CWISS_RawHashSet_find_hinted(
+static inline CWISS_RawIter CWISS_RawTable_find_hinted(
     const CWISS_Policy* policy, const CWISS_KeyPolicy* key_policy,
-    const CWISS_RawHashSet* self, const void* key, size_t hash) {
+    const CWISS_RawTable* self, const void* key, size_t hash) {
   CWISS_ProbeSeq seq = CWISS_ProbeSeq_Start(self->ctrl_, hash, self->capacity_);
   while (true) {
     CWISS_Group g = CWISS_Group_new(self->ctrl_ + seq.offset_);
@@ -779,7 +781,7 @@ static inline CWISS_RawIter CWISS_RawHashSet_find_hinted(
       char* slot =
           self->slots_ + CWISS_ProbeSeq_offset(&seq, i) * policy->slot->size;
       if (CWISS_LIKELY(key_policy->eq(key, policy->slot->get(slot))))
-        return CWISS_RawHashSet_citer_at(policy, self,
+        return CWISS_RawTable_citer_at(policy, self,
                                          CWISS_ProbeSeq_offset(&seq, i));
     }
     if (CWISS_LIKELY(CWISS_Group_MatchEmpty(&g).mask))
@@ -794,22 +796,22 @@ static inline CWISS_RawIter CWISS_RawHashSet_find_hinted(
 ///
 /// `key_policy` is a possibly heterogenous key policy for comparing `key`'s
 /// type to types in the map. `key_policy` may be `&policy->key`.
-static inline CWISS_RawIter CWISS_RawHashSet_find(
+static inline CWISS_RawIter CWISS_RawTable_find(
     const CWISS_Policy* policy, const CWISS_KeyPolicy* key_policy,
-    const CWISS_RawHashSet* self, const void* key) {
-  return CWISS_RawHashSet_find_hinted(policy, key_policy, self, key,
+    const CWISS_RawTable* self, const void* key) {
+  return CWISS_RawTable_find_hinted(policy, key_policy, self, key,
                                       key_policy->hash(key));
 }
 
 /// Erases the element pointed to by the given valid iterator.
 /// This function will invalidate the iterator.
-static inline void CWISS_RawHashSet_erase_at(const CWISS_Policy* policy,
+static inline void CWISS_RawTable_erase_at(const CWISS_Policy* policy,
                                              CWISS_RawIter it) {
   CWISS_AssertIsFull(it.ctrl_);
   if (policy->slot->del != NULL) {
     policy->slot->del(it.slot_);
   }
-  CWISS_RawHashSet_EraseMetaOnly(policy, it);
+  CWISS_RawTable_EraseMetaOnly(policy, it);
 }
 
 /// Erases the entry corresponding to `key`, if present. Returns true if
@@ -817,22 +819,22 @@ static inline void CWISS_RawHashSet_erase_at(const CWISS_Policy* policy,
 ///
 /// `key_policy` is a possibly heterogenous key policy for comparing `key`'s
 /// type to types in the map. `key_policy` may be `&policy->key`.
-static inline bool CWISS_RawHashSet_erase(const CWISS_Policy* policy,
+static inline bool CWISS_RawTable_erase(const CWISS_Policy* policy,
                                           const CWISS_KeyPolicy* key_policy,
-                                          CWISS_RawHashSet* self,
+                                          CWISS_RawTable* self,
                                           const void* key) {
-  CWISS_RawIter it = CWISS_RawHashSet_find(policy, key_policy, self, key);
+  CWISS_RawIter it = CWISS_RawTable_find(policy, key_policy, self, key);
   if (it.slot_ == NULL) return false;
-  CWISS_RawHashSet_erase_at(policy, it);
+  CWISS_RawTable_erase_at(policy, it);
   return true;
 }
 
 /// Triggers a rehash, growing to at least a capacity of `n`.
-static inline void CWISS_RawHashSet_rehash(const CWISS_Policy* policy,
-                                           CWISS_RawHashSet* self, size_t n) {
+static inline void CWISS_RawTable_rehash(const CWISS_Policy* policy,
+                                           CWISS_RawTable* self, size_t n) {
   if (n == 0 && self->capacity_ == 0) return;
   if (n == 0 && self->size_ == 0) {
-    CWISS_RawHashSet_DestroySlots(policy, self);
+    CWISS_RawTable_DestroySlots(policy, self);
     // infoz().RecordStorageChanged(0, 0);
     // infoz().RecordClearedReservation();
     return;
@@ -844,7 +846,7 @@ static inline void CWISS_RawHashSet_rehash(const CWISS_Policy* policy,
       n | CWISS_GrowthToLowerboundCapacity(self->size_));
   // n == 0 unconditionally rehashes as per the standard.
   if (n == 0 || m > self->capacity_) {
-    CWISS_RawHashSet_Resize(policy, self, m);
+    CWISS_RawTable_Resize(policy, self, m);
 
     // This is after resize, to ensure that we have completed the allocation
     // and have potentially sampled the hashtable.
@@ -856,14 +858,14 @@ static inline void CWISS_RawHashSet_rehash(const CWISS_Policy* policy,
 ///
 /// `key_policy` is a possibly heterogenous key policy for comparing `key`'s
 /// type to types in the map. `key_policy` may be `&policy->key`.
-static inline bool CWISS_RawHashSet_contains(const CWISS_Policy* policy,
+static inline bool CWISS_RawTable_contains(const CWISS_Policy* policy,
                                              const CWISS_KeyPolicy* key_policy,
-                                             const CWISS_RawHashSet* self,
+                                             const CWISS_RawTable* self,
                                              const void* key) {
-  return CWISS_RawHashSet_find(policy, key_policy, self, key).slot_ != NULL;
+  return CWISS_RawTable_find(policy, key_policy, self, key).slot_ != NULL;
 }
 
 CWISS_END_EXTERN
 CWISS_END
 
-#endif  // CWISSTABLE_INTERNAL_RAW_HASH_SET_H_
+#endif  // CWISSTABLE_INTERNAL_RAW_TABLE_H_

@@ -22,7 +22,7 @@
 #include "cwisstable/internal/base.h"
 #include "cwisstable/internal/bits.h"
 #include "cwisstable/internal/capacity.h"
-#include "cwisstable/internal/ctrl.h"
+#include "cwisstable/internal/control_byte.h"
 
 /// Table probing functions.
 ///
@@ -101,7 +101,7 @@ typedef struct {
 ///
 /// NOTE: this function must work with tables having both empty and deleted
 /// slots in the same group. Such tables appear during
-/// `CWISS_RawHashSet_DropDeletesWithoutResize()`.
+/// `CWISS_RawTable_DropDeletesWithoutResize()`.
 static inline CWISS_FindInfo CWISS_FindFirstNonFull(
     const CWISS_ControlByte* ctrl, size_t hash, size_t capacity) {
   CWISS_ProbeSeq seq = CWISS_ProbeSeq_Start(ctrl, hash, capacity);

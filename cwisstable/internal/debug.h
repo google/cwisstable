@@ -38,12 +38,12 @@ namespace cwisstable::internal {
 /// occurred; however, the exact meaning of this number varies according to the
 /// container type.
 size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
-                                  const CWISS_RawHashSet* set, const void* key);
+                                  const CWISS_RawTable* set, const void* key);
 
 /// Returns the number of bytes requested from the allocator by the container
 /// and not freed.
 size_t AllocatedByteSize(const CWISS_Policy* policy,
-                         const CWISS_RawHashSet* set);
+                         const CWISS_RawTable* set);
 
 /// Returns a tight lower bound for AllocatedByteSize(c) where `c` is of type
 /// `C` and `c.size()` is equal to `num_elements`.
@@ -52,7 +52,7 @@ size_t LowerBoundAllocatedByteSize(const CWISS_Policy* policy, size_t size);
 /// Gets a histogram of the number of probes for each elements in the container.
 /// The sum of all the values in the vector is equal to container.size().
 std::vector<size_t> GetHashtableDebugNumProbesHistogram(
-    const CWISS_Policy* policy, const CWISS_RawHashSet* set);
+    const CWISS_Policy* policy, const CWISS_RawTable* set);
 
 struct HashtableDebugProbeSummary {
   size_t total_elements;
@@ -63,6 +63,6 @@ struct HashtableDebugProbeSummary {
 /// Gets a summary of the probe count distribution for the elements in the
 /// container.
 HashtableDebugProbeSummary GetHashtableDebugProbeSummary(
-    const CWISS_Policy* policy, const CWISS_RawHashSet* set);
+    const CWISS_Policy* policy, const CWISS_RawTable* set);
 }  // namespace cwisstable::internal
 #endif  // CWISSTABLE_INTERNAL_DEBUG_H_

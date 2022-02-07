@@ -33,7 +33,7 @@
 
 namespace cwisstable::internal {
 size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
-                                  const CWISS_RawHashSet* set,
+                                  const CWISS_RawTable* set,
                                   const void* key) {
   size_t num_probes = 0;
   size_t hash = policy->key->hash(key);
@@ -56,7 +56,7 @@ size_t GetHashtableDebugNumProbes(const CWISS_Policy* policy,
 }
 
 size_t AllocatedByteSize(const CWISS_Policy* policy,
-                         const CWISS_RawHashSet* set) {
+                         const CWISS_RawTable* set) {
   size_t capacity = set->capacity_;
   if (capacity == 0) return 0;
   size_t m = CWISS_AllocSize(capacity, policy->slot->size, policy->slot->align);
@@ -88,9 +88,9 @@ size_t LowerBoundAllocatedByteSize(const CWISS_Policy* policy, size_t size) {
 }
 
 std::vector<size_t> GetHashtableDebugNumProbesHistogram(
-    const CWISS_Policy* policy, const CWISS_RawHashSet* set) {
+    const CWISS_Policy* policy, const CWISS_RawTable* set) {
   std::vector<size_t> v;
-  for (auto it = CWISS_RawHashSet_citer(policy, set);
+  for (auto it = CWISS_RawTable_citer(policy, set);
        CWISS_RawIter_get(policy, &it); CWISS_RawIter_next(policy, &it)) {
     size_t num_probes =
         GetHashtableDebugNumProbes(policy, set, CWISS_RawIter_get(policy, &it));
@@ -101,7 +101,7 @@ std::vector<size_t> GetHashtableDebugNumProbesHistogram(
 }
 
 HashtableDebugProbeSummary GetHashtableDebugProbeSummary(
-    const CWISS_Policy* policy, const CWISS_RawHashSet* set) {
+    const CWISS_Policy* policy, const CWISS_RawTable* set) {
   auto probes = GetHashtableDebugNumProbesHistogram(policy, set);
   HashtableDebugProbeSummary summary = {};
   for (size_t i = 0; i < probes.size(); ++i) {

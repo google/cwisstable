@@ -37,15 +37,15 @@ filegroup(
         "cwisstable/internal/base.h",
         "cwisstable/internal/bits.h",
         "cwisstable/internal/capacity.h",
-        "cwisstable/internal/ctrl.h",
+        "cwisstable/internal/control_byte.h",
         "cwisstable/internal/extract.h",
         "cwisstable/internal/probe.h",
-        "cwisstable/internal/raw_hash_set.h",
+        "cwisstable/internal/raw_table.h",
     ],
 )
 
 cc_library(
-    name = "split",
+    name = "cwisstable_split",
     hdrs = [":public_headers"],
     srcs = [":private_headers"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
@@ -54,7 +54,7 @@ cc_library(
 )
 
 genrule(
-    name = "generate_unified",
+    name = "unify",
     srcs = [
         ":public_headers",
         ":private_headers",
@@ -71,7 +71,7 @@ genrule(
 )
 
 cc_library(
-    name = "unified",
+    name = "cwisstable",
     hdrs = ["cwisstable.h"],
     copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
@@ -84,7 +84,7 @@ cc_library(
     srcs = ["cwisstable/internal/debug.cc"],
     copts = CWISS_DEFAULT_COPTS + CWISS_CXX_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
-    deps = [":unified"],
+    deps = [":cwisstable"],
     visibility = ["//:__subpackages__"],
 )
 
@@ -93,7 +93,7 @@ cc_library(
     hdrs = ["cwisstable/internal/test_helpers.h"],
     copts = CWISS_DEFAULT_COPTS + CWISS_CXX_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
-    deps = ["//:unified"],
+    deps = ["//:cwisstable"],
     visibility = ["//:__subpackages__"],
 )
 
@@ -101,8 +101,8 @@ cc_test(
     name = "cwisstable_test",
     srcs = ["cwisstable/cwisstable_test.cc"],
     deps = [
+        ":cwisstable",
         ":debug",
-        ":unified",
         ":test_helpers",
 
         "@com_google_absl//absl/cleanup",
@@ -117,8 +117,8 @@ cc_binary(
     srcs = ["cwisstable/cwisstable_benchmark.cc"],
     tags = ["benchmark"],
     deps = [
+        ":cwisstable",
         ":debug",
-        ":unified",
         ":test_helpers",
         
         "@com_google_absl//absl/cleanup",
