@@ -33,7 +33,7 @@ CWISS_BEGIN_EXTERN
 /// that define the state of the corresponding slot in the slot array. Group
 /// manipulation is tightly optimized to be as efficient as possible.
 
-/// A `CWISS_ctrl_t` is a single control byte, which can have one of four
+/// A `CWISS_ControlByte` is a single control byte, which can have one of four
 /// states: empty, deleted, full (which has an associated seven-bit hash) and
 /// the sentinel. They have the following bit patterns:
 ///
@@ -47,11 +47,11 @@ CWISS_BEGIN_EXTERN
 /// These values are specifically tuned for SSE-flavored SIMD; future ports to
 /// other SIMD platforms may require choosing new values. The static_asserts
 /// below detail the source of these choices.
-typedef int8_t CWISS_ctrl_t;
+typedef int8_t CWISS_ControlByte;
 #define CWISS_kEmpty (INT8_C(-128))
 #define CWISS_kDeleted (INT8_C(-2))
 #define CWISS_kSentinel (INT8_C(-1))
-// TODO: Wrap CWISS_ctrl_t in a single-field struct to get strict-aliasing
+// TODO: Wrap CWISS_ControlByte in a single-field struct to get strict-aliasing
 // benefits.
 
 static_assert(
@@ -78,10 +78,10 @@ static_assert(CWISS_kDeleted == -2,
               "ConvertSpecialToEmptyAndFullToDeleted efficient");
 
 /// Returns a pointer to a control byte group that can be used by empty tables.
-static inline CWISS_ctrl_t* CWISS_EmptyGroup() {
+static inline CWISS_ControlByte* CWISS_EmptyGroup() {
   // A single block of empty control bytes for tables without any slots
   // allocated. This enables removing a branch in the hot path of find().
-  alignas(16) static const CWISS_ctrl_t kEmptyGroup[16] = {
+  alignas(16) static const CWISS_ControlByte kEmptyGroup[16] = {
       CWISS_kSentinel, CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
       CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
       CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
@@ -90,14 +90,14 @@ static inline CWISS_ctrl_t* CWISS_EmptyGroup() {
 
   // Const must be cast away here; no uses of this function will actually write
   // to it, because it is only used for empty tables.
-  return (CWISS_ctrl_t*)&kEmptyGroup;
+  return (CWISS_ControlByte*)&kEmptyGroup;
 }
 
 /// Returns a hash seed.
 ///
 /// The seed consists of the ctrl_ pointer, which adds enough entropy to ensure
 /// non-determinism of iteration order in most cases.
-static inline size_t CWISS_HashSeed(const CWISS_ctrl_t* ctrl) {
+static inline size_t CWISS_HashSeed(const CWISS_ControlByte* ctrl) {
   // The low bits of the pointer have little or no entropy because of
   // alignment. We shift the pointer to try to use higher entropy bits. A
   // good number seems to be 12 bits, because that aligns with page size.
@@ -106,7 +106,7 @@ static inline size_t CWISS_HashSeed(const CWISS_ctrl_t* ctrl) {
 
 /// Extracts the H1 portion of a hash: the high 57 bits mixed with a per-table
 /// salt.
-static inline size_t CWISS_H1(size_t hash, const CWISS_ctrl_t* ctrl) {
+static inline size_t CWISS_H1(size_t hash, const CWISS_ControlByte* ctrl) {
   return (hash >> 7) ^ CWISS_HashSeed(ctrl);
 }
 
@@ -116,18 +116,20 @@ typedef uint8_t CWISS_h2_t;
 static inline CWISS_h2_t CWISS_H2(size_t hash) { return hash & 0x7F; }
 
 /// Returns whether `c` is empty.
-static inline bool CWISS_IsEmpty(CWISS_ctrl_t c) { return c == CWISS_kEmpty; }
+static inline bool CWISS_IsEmpty(CWISS_ControlByte c) {
+  return c == CWISS_kEmpty;
+}
 
 /// Returns whether `c` is full.
-static inline bool CWISS_IsFull(CWISS_ctrl_t c) { return c >= 0; }
+static inline bool CWISS_IsFull(CWISS_ControlByte c) { return c >= 0; }
 
 /// Returns whether `c` is deleted.
-static inline bool CWISS_IsDeleted(CWISS_ctrl_t c) {
+static inline bool CWISS_IsDeleted(CWISS_ControlByte c) {
   return c == CWISS_kDeleted;
 }
 
 /// Returns whether `c` is empty or deleted.
-static inline bool CWISS_IsEmptyOrDeleted(CWISS_ctrl_t c) {
+static inline bool CWISS_IsEmptyOrDeleted(CWISS_ControlByte c) {
   return c < CWISS_kSentinel;
 }
 
@@ -198,7 +200,7 @@ static inline CWISS_Group CWISS_mm_cmpgt_epi8_fixed(CWISS_Group a,
   return _mm_cmpgt_epi8(a, b);
 }
 
-static inline CWISS_Group CWISS_Group_new(const CWISS_ctrl_t* pos) {
+static inline CWISS_Group CWISS_Group_new(const CWISS_ControlByte* pos) {
   return _mm_loadu_si128((const CWISS_Group*)pos);
 }
 
@@ -236,7 +238,7 @@ static inline uint32_t CWISS_Group_CountLeadingEmptyOrDeleted(
 }
 
 static inline void CWISS_Group_ConvertSpecialToEmptyAndFullToDeleted(
-    const CWISS_Group* self, CWISS_ctrl_t* dst) {
+    const CWISS_Group* self, CWISS_ControlByte* dst) {
   CWISS_Group msbs = _mm_set1_epi8((char)-128);
   CWISS_Group x126 = _mm_set1_epi8(126);
   #if CWISS_HAVE_SSSE3
@@ -254,7 +256,7 @@ typedef uint64_t CWISS_Group;
   #define CWISS_Group_kShift 3
 
 // NOTE: Endian-hostile.
-static inline CWISS_Group CWISS_Group_new(const CWISS_ctrl_t* pos) {
+static inline CWISS_Group CWISS_Group_new(const CWISS_ControlByte* pos) {
   CWISS_Group val;
   memcpy(&val, pos, sizeof(val));
   return val;
@@ -299,7 +301,7 @@ static inline uint32_t CWISS_Group_CountLeadingEmptyOrDeleted(
 }
 
 static inline void CWISS_Group_ConvertSpecialToEmptyAndFullToDeleted(
-    const CWISS_Group* self, CWISS_ctrl_t* dst) {
+    const CWISS_Group* self, CWISS_ControlByte* dst) {
   uint64_t msbs = 0x8080808080808080ULL;
   uint64_t lsbs = 0x0101010101010101ULL;
   uint64_t x = *self & msbs;

@@ -54,13 +54,13 @@ typedef struct {
   size_t mask_;
   size_t offset_;
   size_t index_;
-} CWISS_probe_seq;
+} CWISS_ProbeSeq;
 
 /// Creates a new probe sequence using `hash` as the initial value of the
 /// sequence and `mask` (usually the capacity of the table) as the mask to
 /// apply to each value in the progression.
-static inline CWISS_probe_seq CWISS_probe_seq_new(size_t hash, size_t mask) {
-  return (CWISS_probe_seq){
+static inline CWISS_ProbeSeq CWISS_ProbeSeq_new(size_t hash, size_t mask) {
+  return (CWISS_ProbeSeq){
       .mask_ = mask,
       .offset_ = hash & mask,
   };
@@ -68,26 +68,27 @@ static inline CWISS_probe_seq CWISS_probe_seq_new(size_t hash, size_t mask) {
 
 /// Returns the slot `i` indices ahead of `self` within the bounds expressed by
 /// `mask`.
-static inline size_t CWISS_probe_seq_offset(const CWISS_probe_seq* self,
-                                            size_t i) {
+static inline size_t CWISS_ProbeSeq_offset(const CWISS_ProbeSeq* self,
+                                           size_t i) {
   return (self->offset_ + i) & self->mask_;
 }
 
 /// Advances the sequence; the value can be obtained by calling
-/// `CWISS_probe_seq_offset()` or inspecting `offset_`.
-static inline void CWISS_probe_seq_next(CWISS_probe_seq* self) {
+/// `CWISS_ProbeSeq_offset()` or inspecting `offset_`.
+static inline void CWISS_ProbeSeq_next(CWISS_ProbeSeq* self) {
   self->index_ += CWISS_Group_kWidth;
   self->offset_ += self->index_;
   self->offset_ &= self->mask_;
 }
 
 /// Begins a probing operation on `ctrl`, using `hash`.
-static inline CWISS_probe_seq CWISS_probe(const CWISS_ctrl_t* ctrl, size_t hash,
-                                          size_t capacity) {
-  return CWISS_probe_seq_new(CWISS_H1(hash, ctrl), capacity);
+static inline CWISS_ProbeSeq CWISS_ProbeSeq_Start(const CWISS_ControlByte* ctrl,
+                                                  size_t hash,
+                                                  size_t capacity) {
+  return CWISS_ProbeSeq_new(CWISS_H1(hash, ctrl), capacity);
 }
 
-// The return value of `CWISS_find_first_non_full()`.
+// The return value of `CWISS_FindFirstNonFull()`.
 typedef struct {
   size_t offset;
   size_t probe_length;
@@ -100,11 +101,10 @@ typedef struct {
 ///
 /// NOTE: this function must work with tables having both empty and deleted
 /// slots in the same group. Such tables appear during
-/// `CWISS_RawHashSet_drop_deletes_without_resize()`.
-static inline CWISS_FindInfo CWISS_find_first_non_full(const CWISS_ctrl_t* ctrl,
-                                                       size_t hash,
-                                                       size_t capacity) {
-  CWISS_probe_seq seq = CWISS_probe(ctrl, hash, capacity);
+/// `CWISS_RawHashSet_DropDeletesWithoutResize()`.
+static inline CWISS_FindInfo CWISS_FindFirstNonFull(
+    const CWISS_ControlByte* ctrl, size_t hash, size_t capacity) {
+  CWISS_ProbeSeq seq = CWISS_ProbeSeq_Start(ctrl, hash, capacity);
   while (true) {
     CWISS_Group g = CWISS_Group_new(ctrl + seq.offset_);
     CWISS_BitMask mask = CWISS_Group_MatchEmptyOrDeleted(&g);
@@ -114,18 +114,17 @@ static inline CWISS_FindInfo CWISS_find_first_non_full(const CWISS_ctrl_t* ctrl,
       // In debug build we will randomly insert in either the front or back of
       // the group.
       // TODO(kfm,sbenza): revisit after we do unconditional mixing
-      if (!CWISS_is_small(capacity) &&
-          CWISS_ShouldInsertBackwards(hash, ctrl)) {
+      if (!CWISS_IsSmall(capacity) && CWISS_ShouldInsertBackwards(hash, ctrl)) {
         return (CWISS_FindInfo){
-            CWISS_probe_seq_offset(&seq, CWISS_BitMask_HighestBitSet(&mask)),
+            CWISS_ProbeSeq_offset(&seq, CWISS_BitMask_HighestBitSet(&mask)),
             seq.index_};
       }
 #endif
       return (CWISS_FindInfo){
-          CWISS_probe_seq_offset(&seq, CWISS_BitMask_TrailingZeros(&mask)),
+          CWISS_ProbeSeq_offset(&seq, CWISS_BitMask_TrailingZeros(&mask)),
           seq.index_};
     }
-    CWISS_probe_seq_next(&seq);
+    CWISS_ProbeSeq_next(&seq);
     CWISS_DCHECK(seq.index_ <= capacity, "full table!");
   }
 }

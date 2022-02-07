@@ -34,10 +34,10 @@
 /// ```
 /// struct CWISS_BackingArray {
 ///   // Control bytes for the "real" slots.
-///   CWISS_ctrl_t ctrl[capacity];
+///   CWISS_ControlByte ctrl[capacity];
 ///   // Always `CWISS_kSentinel`. This is used by iterators to find when to
 ///   // stop and serves no other purpose.
-///   CWISS_ctrl_t sentinel;
+///   CWISS_ControlByte sentinel;
 ///   // A copy of the first `kWidth - 1` elements of `ctrl`. This is used so
 ///   // that if a probe sequence picks a value near the end of `ctrl`,
 ///   // `CWISS_Group` will have valid control bytes to look at.
@@ -45,7 +45,7 @@
 ///   // As an interesting special-case, such probe windows will never choose
 ///   // the zeroth slot as a candidate, because they will see `kSentinel`
 ///   // instead of the correct H2 value.
-///   CWISS_ctrl_t clones[kWidth - 1];
+///   CWISS_ControlByte clones[kWidth - 1];
 ///   // Alignment padding equal to `alignof(slot_type)`.
 ///   char padding_;
 ///   // The actual slot data.
@@ -92,7 +92,7 @@ static inline size_t RandomSeed(void) {
 /// Mixes a randomly generated per-process seed with `hash` and `ctrl` to
 /// randomize insertion order within groups.
 CWISS_INLINE_NEVER static bool CWISS_ShouldInsertBackwards(
-    size_t hash, const CWISS_ctrl_t* ctrl) {
+    size_t hash, const CWISS_ControlByte* ctrl) {
   // To avoid problems with weak hashes and single bit tests, we use % 13.
   // TODO(kfm,sbenza): revisit after we do unconditional mixing
   return (CWISS_H1(hash, ctrl) ^ RandomSeed()) % 13 > 6;
@@ -106,13 +106,13 @@ CWISS_INLINE_NEVER static bool CWISS_ShouldInsertBackwards(
 /// Preconditions: `CWISS_IsValidCapacity(capacity)`,
 /// `ctrl[capacity]` == `kSentinel`, `ctrl[i] != kSentinel for i < capacity`.
 CWISS_INLINE_NEVER static void CWISS_ConvertDeletedToEmptyAndFullToDeleted(
-    CWISS_ctrl_t* ctrl, size_t capacity) {
+    CWISS_ControlByte* ctrl, size_t capacity) {
   CWISS_DCHECK(ctrl[capacity] == CWISS_kSentinel, "bad ctrl value at %zu: %02x",
                capacity, ctrl[capacity]);
   CWISS_DCHECK(CWISS_IsValidCapacity(capacity), "invalid capacity: %zu",
                capacity);
 
-  for (CWISS_ctrl_t* pos = ctrl; pos < ctrl + capacity;
+  for (CWISS_ControlByte* pos = ctrl; pos < ctrl + capacity;
        pos += CWISS_Group_kWidth) {
     CWISS_Group g = CWISS_Group_new(pos);
     CWISS_Group_ConvertSpecialToEmptyAndFullToDeleted(&g, pos);
@@ -124,7 +124,7 @@ CWISS_INLINE_NEVER static void CWISS_ConvertDeletedToEmptyAndFullToDeleted(
 
 /// Sets `ctrl` to `{kEmpty, ..., kEmpty, kSentinel}`, marking the entire
 /// array as deleted.
-static inline void CWISS_ResetCtrl(size_t capacity, CWISS_ctrl_t* ctrl,
+static inline void CWISS_ResetCtrl(size_t capacity, CWISS_ControlByte* ctrl,
                                    const void* slots, size_t slot_size) {
   memset(ctrl, CWISS_kEmpty, capacity + 1 + CWISS_NumClonedBytes());
   ctrl[capacity] = CWISS_kSentinel;
@@ -135,8 +135,8 @@ static inline void CWISS_ResetCtrl(size_t capacity, CWISS_ctrl_t* ctrl,
 ///
 /// Unlike setting it directly, this function will perform bounds checks and
 /// mirror the value to the cloned tail if necessary.
-static inline void CWISS_SetCtrl(size_t i, CWISS_ctrl_t h, size_t capacity,
-                                 CWISS_ctrl_t* ctrl, const void* slots,
+static inline void CWISS_SetCtrl(size_t i, CWISS_ControlByte h, size_t capacity,
+                                 CWISS_ControlByte* ctrl, const void* slots,
                                  size_t slot_size) {
   CWISS_DCHECK(i < capacity, "CWISS_SetCtrl out-of-bounds: %zu >= %zu", i,
                capacity);
@@ -227,9 +227,9 @@ static inline size_t CWISS_AllocSize(size_t capacity, size_t slot_size,
 /// In small mode only the first `capacity` control bytes after the sentinel
 /// are valid. The rest contain dummy ctrl_t::kEmpty values that do not
 /// represent a real slot. This is important to take into account on
-/// `CWISS_find_first_non_full()`, where we never try
+/// `CWISS_FindFirstNonFull()`, where we never try
 /// `CWISS_ShouldInsertBackwards()` for small tables.
-static inline bool CWISS_is_small(size_t capacity) {
+static inline bool CWISS_IsSmall(size_t capacity) {
   return capacity < CWISS_Group_kWidth - 1;
 }
 

@@ -257,12 +257,12 @@ BENCHMARK(BM_ReserveStringTable)->Range(128, 4096);
 template <typename CtrlIter>
 void Iota(CtrlIter begin, CtrlIter end, int value) {
   for (; begin != end; ++begin, ++value) {
-    *begin = static_cast<CWISS_ctrl_t>(value);
+    *begin = static_cast<CWISS_ControlByte>(value);
   }
 }
 
 void BM_Group_Match(benchmark::State& state) {
-  std::array<CWISS_ctrl_t, CWISS_Group_kWidth> group;
+  std::array<CWISS_ControlByte, CWISS_Group_kWidth> group;
   Iota(group.begin(), group.end(), -4);
   auto g = CWISS_Group_new(group.data());
   CWISS_h2_t h = 1;
@@ -275,7 +275,7 @@ void BM_Group_Match(benchmark::State& state) {
 BENCHMARK(BM_Group_Match);
 
 void BM_Group_MatchEmpty(benchmark::State& state) {
-  std::array<CWISS_ctrl_t, CWISS_Group_kWidth> group;
+  std::array<CWISS_ControlByte, CWISS_Group_kWidth> group;
   Iota(group.begin(), group.end(), -4);
   auto g = CWISS_Group_new(group.data());
   for (auto _ : state) {
@@ -286,7 +286,7 @@ void BM_Group_MatchEmpty(benchmark::State& state) {
 BENCHMARK(BM_Group_MatchEmpty);
 
 void BM_Group_MatchEmptyOrDeleted(benchmark::State& state) {
-  std::array<CWISS_ctrl_t, CWISS_Group_kWidth> group;
+  std::array<CWISS_ControlByte, CWISS_Group_kWidth> group;
   Iota(group.begin(), group.end(), -4);
   auto g = CWISS_Group_new(group.data());
   for (auto _ : state) {
@@ -297,7 +297,7 @@ void BM_Group_MatchEmptyOrDeleted(benchmark::State& state) {
 BENCHMARK(BM_Group_MatchEmptyOrDeleted);
 
 void BM_Group_CountLeadingEmptyOrDeleted(benchmark::State& state) {
-  std::array<CWISS_ctrl_t, CWISS_Group_kWidth> group;
+  std::array<CWISS_ControlByte, CWISS_Group_kWidth> group;
   Iota(group.begin(), group.end(), -2);
   auto g = CWISS_Group_new(group.data());
   for (auto _ : state) {
@@ -308,7 +308,7 @@ void BM_Group_CountLeadingEmptyOrDeleted(benchmark::State& state) {
 BENCHMARK(BM_Group_CountLeadingEmptyOrDeleted);
 
 void BM_Group_MatchFirstEmptyOrDeleted(benchmark::State& state) {
-  std::array<CWISS_ctrl_t, CWISS_Group_kWidth> group;
+  std::array<CWISS_ControlByte, CWISS_Group_kWidth> group;
   Iota(group.begin(), group.end(), -2);
   auto g = CWISS_Group_new(group.data());
   for (auto _ : state) {
@@ -321,16 +321,16 @@ BENCHMARK(BM_Group_MatchFirstEmptyOrDeleted);
 
 void BM_DropDeletes(benchmark::State& state) {
   constexpr size_t capacity = (1 << 20) - 1;
-  std::vector<CWISS_ctrl_t> ctrl(capacity + 1 + CWISS_Group_kWidth);
+  std::vector<CWISS_ControlByte> ctrl(capacity + 1 + CWISS_Group_kWidth);
   ctrl[capacity] = CWISS_kSentinel;
-  std::vector<CWISS_ctrl_t> pattern = {CWISS_kEmpty, 2, CWISS_kDeleted, 2,
-                                       CWISS_kEmpty, 1, CWISS_kDeleted};
+  std::vector<CWISS_ControlByte> pattern = {CWISS_kEmpty, 2, CWISS_kDeleted, 2,
+                                            CWISS_kEmpty, 1, CWISS_kDeleted};
   for (size_t i = 0; i != capacity; ++i) {
     ctrl[i] = pattern[i % pattern.size()];
   }
   while (state.KeepRunning()) {
     state.PauseTiming();
-    std::vector<CWISS_ctrl_t> ctrl_copy = ctrl;
+    std::vector<CWISS_ControlByte> ctrl_copy = ctrl;
     state.ResumeTiming();
     CWISS_ConvertDeletedToEmptyAndFullToDeleted(ctrl_copy.data(), capacity);
     DoNotOptimize(ctrl_copy[capacity]);

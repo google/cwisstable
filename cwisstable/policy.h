@@ -244,7 +244,7 @@ typedef struct {
 // ---- PUBLIC API ENDS HERE! ----
 
 #define CWISS_DECLARE_POLICY_(kPolicy_, Type_, Key_, ...)                \
-  CWISS_BEGIN                                                           \
+  CWISS_BEGIN                                                            \
   CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
   inline void kPolicy_##_DefaultCopy(void* dst, const void* src) {       \
     memcpy(dst, src, sizeof(Type_));                                     \
@@ -301,7 +301,7 @@ typedef struct {
                     __VA_ARGS__),                                        \
       CWISS_EXTRACT(slot_get, kPolicy_##_DefaultSlotGet, __VA_ARGS__),   \
   };                                                                     \
-  CWISS_END                                                             \
+  CWISS_END                                                              \
   CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
   const CWISS_Policy kPolicy_ = {                                        \
       &kPolicy_##_ObjectPolicy,                                          \
@@ -311,7 +311,7 @@ typedef struct {
   }
 
 #define CWISS_DECLARE_NODE_FUNCTIONS_(kPolicy_, Type_, ...)                    \
-  CWISS_BEGIN                                                                 \
+  CWISS_BEGIN                                                                  \
   static inline void kPolicy_##_NodeSlotInit(void* slot) {                     \
     void* node = CWISS_EXTRACT(alloc_alloc, CWISS_DefaultMalloc, __VA_ARGS__)( \
         sizeof(Type_), alignof(Type_));                                        \
