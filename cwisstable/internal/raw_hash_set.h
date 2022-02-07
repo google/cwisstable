@@ -350,7 +350,7 @@ static inline void CWISS_RawHashSet_resize(const CWISS_Policy* policy,
 /// Prunes control bits to remove as many tombstones as possible.
 ///
 /// See the comment on `CWISS_RawHashSet_rehash_and_grow_if_necessary()`.
-CWISS_NOINLINE
+CWISS_INLINE_NEVER
 static void CWISS_RawHashSet_drop_deletes_without_resize(
     const CWISS_Policy* policy, CWISS_RawHashSet* self) {
   CWISS_DCHECK(CWISS_IsValidCapacity(self->capacity_), "invalid capacity: %zu",
@@ -532,7 +532,7 @@ typedef struct {
 /// slot index to insert it at.
 ///
 /// If the table does not actually have space, UB.
-CWISS_NOINLINE
+CWISS_INLINE_NEVER
 static size_t CWISS_RawHashSet_prepare_insert(const CWISS_Policy* policy,
                                               CWISS_RawHashSet* self,
                                               size_t hash) {
