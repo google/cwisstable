@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "cwisstable/internal/base.h"
 
@@ -119,6 +120,61 @@ static inline uint32_t CWISS_LeadingZeroes64(uint64_t x) {
 /// of the most significant one.
 #define CWISS_BitWidth(x_) \
   (((uint32_t)(sizeof(x_) * 8)) - CWISS_LeadingZeros(x_))
+
+#define CWISS_RotateLeft(x, bits) \
+  (((x) << bits) | ((x) >> (sizeof(x) * 8 - bits)))
+
+/// The return type of `CWISS_Mul128`.
+typedef struct {
+  uint64_t lo, hi;
+} CWISS_U128;
+
+/// Computes a double-width multiplication operation.
+static inline CWISS_U128 CWISS_Mul128(uint64_t a, uint64_t b) {
+  // TODO: de-intrinsics-ize this.
+  __uint128_t p = a;
+  p *= b;
+  return (CWISS_U128){(uint64_t)p, (uint64_t)(p >> 64)};
+}
+
+/// Loads an unaligned u32.
+static inline uint32_t CWISS_Load32(const void* p) {
+  uint32_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+
+/// Loads an unaligned u64.
+static inline uint64_t CWISS_Load64(const void* p) {
+  uint64_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+
+/// Reads 9 to 16 bytes from p.
+static inline CWISS_U128 CWISS_Load9To16(const void* p, size_t len) {
+  const unsigned char* p8 = (const unsigned char*)p;
+  uint64_t lo = CWISS_Load64(p8);
+  uint64_t hi = CWISS_Load64(p8 + len - 8);
+  return (CWISS_U128){lo, hi >> (128 - len * 8)};
+}
+
+/// Reads 4 to 8 bytes from p.
+static inline uint64_t CWISS_Load4To8(const void* p, size_t len) {
+  const unsigned char* p8 = (const unsigned char*)p;
+  uint64_t lo = CWISS_Load32(p8);
+  uint64_t hi = CWISS_Load32(p8 + len - 4);
+  return lo | (hi << (len - 4) * 8);
+}
+
+/// Reads 1 to 3 bytes from p.
+static inline uint32_t CWISS_Load1To3(const void* p, size_t len) {
+  const unsigned char* p8 = (const unsigned char*)p;
+  uint32_t mem0 = p8[0];
+  uint32_t mem1 = p8[len / 2];
+  uint32_t mem2 = p8[len - 1];
+  return (mem0 | (mem1 << (len / 2 * 8)) | (mem2 << ((len - 1) * 8)));
+}
 
 /// A abstract bitmask, such as that emitted by a SIMD instruction.
 ///
