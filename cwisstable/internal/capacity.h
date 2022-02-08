@@ -128,7 +128,7 @@ static inline void CWISS_ResetCtrl(size_t capacity, CWISS_ControlByte* ctrl,
                                    const void* slots, size_t slot_size) {
   memset(ctrl, CWISS_kEmpty, capacity + 1 + CWISS_NumClonedBytes());
   ctrl[capacity] = CWISS_kSentinel;
-  // SanitizerPoisonMemoryRegion(slots, slot_size * capacity);
+  CWISS_PoisonMemory(slots, slot_size * capacity);
 }
 
 /// Sets `ctrl[i]` to `h`.
@@ -141,12 +141,12 @@ static inline void CWISS_SetCtrl(size_t i, CWISS_ControlByte h, size_t capacity,
   CWISS_DCHECK(i < capacity, "CWISS_SetCtrl out-of-bounds: %zu >= %zu", i,
                capacity);
 
-  /*const char* slot = ((const char*) slots) + i * slot_size;
+  const char* slot = ((const char*)slots) + i * slot_size;
   if (CWISS_IsFull(h)) {
-    SanitizerUnpoisonMemoryRegion(slot, slot_size);
+    CWISS_UnpoisonMemory(slot, slot_size);
   } else {
-    SanitizerPoisonMemoryRegion(slot, slot_size);
-  }*/
+    CWISS_PoisonMemory(slot, slot_size);
+  }
 
   // This is intentionally branchless. If `i < kWidth`, it will write to the
   // cloned bytes as well as the "real" byte; otherwise, it will store `h`

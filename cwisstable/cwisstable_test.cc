@@ -659,7 +659,7 @@ TEST(Table, EnsureNonQuadraticAsInRust) {
 
   // If this is quadratic, the test will timeout.
   auto t2 = IntTable_new(0);
-  absl::Cleanup c_2 = [&] { IntTable_destroy(&t); };
+  absl::Cleanup c2_ = [&] { IntTable_destroy(&t2); };
 
   for (auto it = IntTable_citer(&t); IntTable_CIter_get(&it);
        IntTable_CIter_next(&it)) {
@@ -1028,16 +1028,18 @@ TEST(Table, IterationOrderChangesOnRehash) {
   };
 
   for (int i = 0; i < 5000; ++i) {
-    auto t = MakeSimpleTable(20);
-    const auto reference = Collect(t);
+    // Insert now to ensure that the destructor runs on test exit.
+    garbage.push_back(MakeSimpleTable(20));
+    auto reference = Collect(garbage.back());
+
     // Force rehash to the same size.
-    IntTable_rehash(&t, 0);
-    auto trial = Collect(t);
+    IntTable_rehash(&garbage.back(), 0);
+    auto trial = Collect(garbage.back());
+
     if (trial != reference) {
       // We are done.
       return;
     }
-    garbage.push_back(t);
   }
   FAIL() << "Iteration order remained the same across many attempts.";
 }
@@ -1148,31 +1150,36 @@ TEST(TableDeathTest, EraseOfEndAsserts) {
 // }
 // #endif  // ABSL_INTERNAL_HASHTABLEZ_SAMPLE
 
-// #ifdef ABSL_HAVE_ADDRESS_SANITIZER
-// TEST(Sanitizer, PoisoningUnused) {
-//   IntTable t;
-//   t.reserve(5);
-//   // Insert something to force an allocation.
-//   int64_t& v1 = *t.insert(0).first;
+#if CWISS_HAVE_ASAN
+TEST(Sanitizer, PoisoningUnused) {
+  auto t = IntTable_new(0);
+  absl::Cleanup c_ = [&] { IntTable_destroy(&t); };
+  IntTable_reserve(&t, 5);
+  // Insert something to force an allocation.
+  auto [v, ignored] = Insert(t, 0);
 
-//   // Make sure there is something to test.
-//   ASSERT_GT(t.capacity(), 1);
+  // Make sure there is something to test.
+  auto cap = IntTable_capacity(&t);
+  ASSERT_GT(cap, 1);
 
-//   int64_t* slots = RawHashSetTestOnlyAccess::GetSlots(t);
-//   for (size_t i = 0; i < t.capacity(); ++i) {
-//     EXPECT_EQ(slots + i != &v1, __asan_address_is_poisoned(slots + i));
-//   }
-// }
+  // Reach into the set and grab the slots.
+  int64_t* slots = reinterpret_cast<int64_t*>(t.set_.slots_);
+  for (size_t i = 0; i < cap; ++i) {
+    int64_t* slot = slots + i;
+    EXPECT_EQ(__asan_address_is_poisoned(slots + i), slot != v) << i;
+  }
+}
 
-// TEST(Sanitizer, PoisoningOnErase) {
-//   IntTable t;
-//   int64_t& v = *t.insert(0).first;
+TEST(Sanitizer, PoisoningOnErase) {
+  auto t = IntTable_new(0);
+  absl::Cleanup c_ = [&] { IntTable_destroy(&t); };
+  auto [v, ignored] = Insert(t, 0);
 
-//   EXPECT_FALSE(__asan_address_is_poisoned(&v));
-//   t.erase(0);
-//   EXPECT_TRUE(__asan_address_is_poisoned(&v));
-// }
-// #endif  // ABSL_HAVE_ADDRESS_SANITIZER
+  EXPECT_FALSE(__asan_address_is_poisoned(v));
+  Erase(t, 0);
+  EXPECT_TRUE(__asan_address_is_poisoned(v));
+}
+#endif  // CWISS_HAVE_ASAN
 
 CWISS_DECLARE_HASHSET_WITH(Uint8Table, uint8_t, FlatPolicy<uint8_t>());
 TABLE_HELPERS(Uint8Table);
