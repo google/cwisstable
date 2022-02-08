@@ -161,6 +161,10 @@ CWISS_MSVC_TEST_FLAGS = [
     "/DNOMINMAX",
 ]
 
+CWISS_LLVM_SANTIZER_FLAGS = [
+    "-fsanitize=address",
+]
+
 CWISS_DEFAULT_COPTS = select({
     "//:msvc_compiler": CWISS_MSVC_FLAGS,
     "//:clang-cl_compiler": CWISS_CLANG_CL_FLAGS,
@@ -173,6 +177,11 @@ CWISS_TEST_COPTS = CWISS_DEFAULT_COPTS + select({
     "//:clang-cl_compiler": CWISS_CLANG_CL_TEST_FLAGS,
     "//:clang_compiler": CWISS_LLVM_TEST_FLAGS,
     "//conditions:default": CWISS_GCC_TEST_FLAGS,
+})
+
+CWISS_SAN_COPTS = select({
+    "//:clang_compiler": CWISS_LLVM_SANTIZER_FLAGS,
+    "//conditions:default": [],
 })
 
 CWISS_DEFAULT_LINKOPTS = select({

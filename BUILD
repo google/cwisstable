@@ -16,6 +16,7 @@ load(
     "//:copts.bzl",
     "CWISS_DEFAULT_COPTS",
     "CWISS_DEFAULT_LINKOPTS",
+    "CWISS_SAN_COPTS",
     "CWISS_TEST_COPTS",
     "CWISS_C_VERSION",
     "CWISS_CXX_VERSION",
@@ -108,8 +109,8 @@ cc_test(
         "@com_google_absl//absl/cleanup",
         "@com_google_googletest//:gtest_main",
     ],
-    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION + CWISS_SAN_COPTS,
+    linkopts = CWISS_DEFAULT_LINKOPTS + CWISS_SAN_COPTS,
 )
 
 cc_binary(

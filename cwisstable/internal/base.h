@@ -30,7 +30,7 @@
 ///   performing synchronization. This is used as a weak entropy source
 ///   elsewhere.
 ///
-/// `extern "C"` support via `CWISS_BEGIN_EXTERN` and `CWISS_END_EXTERN`,
+/// `extern "C"` support via `CWISS_END_EXTERN` and `CWISS_END_EXTERN`,
 /// which open and close an `extern "C"` block in C++ mode.
 #ifdef __cplusplus
   #include <atomic>
@@ -140,9 +140,9 @@
 ///
 /// See https://clang.llvm.org/docs/LanguageExtensions.html.
 #ifdef __has_builtin
-  #define CWISS_HAVE_CLANG_BUILTIN(x) __has_builtin(x)
+  #define CWISS_HAVE_CLANG_BUILTIN(x_) __has_builtin(x_)
 #else
-  #define CWISS_HAVE_CLANG_BUILTIN(x) 0
+  #define CWISS_HAVE_CLANG_BUILTIN(x_) 0
 #endif
 
 /// `CWISS_HAVE_GCC_ATTRIBUTE` detects if a particular `__attribute__(())` is
@@ -151,9 +151,15 @@
 /// GCC: https://gcc.gnu.org/gcc-5/changes.html
 /// Clang: https://clang.llvm.org/docs/LanguageExtensions.html
 #ifdef __has_attribute
-  #define CWISS_HAVE_GCC_ATTRIBUTE(x) __has_attribute(x)
+  #define CWISS_HAVE_GCC_ATTRIBUTE(x_) __has_attribute(x_)
 #else
-  #define CWISS_HAVE_GCC_ATTRIBUTE(x) 0
+  #define CWISS_HAVE_GCC_ATTRIBUTE(x_) 0
+#endif
+
+#ifdef __has_feature
+  #define CWISS_HAVE_FEATURE(x_) __has_feature(x_)
+#else
+  #define CWISS_HAVE_FEATURE(x_) 0
 #endif
 
 /// `CWISS_THREAD_LOCAL` expands to the appropriate TLS annotation, if one is
@@ -219,5 +225,55 @@
   #define CWISS_HAVE_PREFETCH 0
   #define CWISS_PREFETCH(addr_, locality_) ((void)0)
 #endif
+
+/// `CWISS_HAVE_ASAN` and `CWISS_HAVE_MSAN` detect the presence of some of the
+/// sanitizers.
+#if defined(__SANITIZE_ADDRESS__) || CWISS_HAVE_FEATURE(address_sanitizer)
+  #define CWISS_HAVE_ASAN 1
+#else
+  #define CWISS_HAVE_ASAN 0
+#endif
+#if defined(__SANITIZE_MEMORY__) || \
+    (CWISS_HAVE_FEATURE(memory_sanitizer) && !defined(__native_client__))
+  #define CWISS_HAVE_MSAN 1
+#else
+  #define CWISS_HAVE_MSAN 0
+#endif
+
+#if CWISS_HAVE_ASAN
+  #include <sanitizer/asan_interface.h>
+#endif
+
+#if CWISS_HAVE_MSAN
+  #include <sanitizer/msan_interface.h>
+#endif
+
+CWISS_BEGIN
+CWISS_BEGIN_EXTERN
+/// Informs a sanitizer runtime that this memory is invalid.
+static inline void CWISS_PoisonMemory(const void* m, size_t s) {
+#if CWISS_HAVE_ASAN
+  ASAN_POISON_MEMORY_REGION(m, s);
+#endif
+#if CWISS_HAVE_MSAN
+  __msan_poison(m, s);
+#endif
+  (void)m;
+  (void)s;
+}
+
+/// Informs a sanitizer runtime that this memory is no longer invalid.
+static inline void CWISS_UnpoisonMemory(const void* m, size_t s) {
+#if CWISS_HAVE_ASAN
+  ASAN_UNPOISON_MEMORY_REGION(m, s);
+#endif
+#if CWISS_HAVE_MSAN
+  __msan_unpoison(m, s);
+#endif
+  (void)m;
+  (void)s;
+}
+CWISS_END_EXTERN
+CWISS_END
 
 #endif  // CWISSTABLE_INTERNAL_BASE_H_

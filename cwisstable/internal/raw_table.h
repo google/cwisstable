@@ -339,9 +339,7 @@ static inline void CWISS_RawTable_Resize(const CWISS_Policy* policy,
     }
   }
   if (old_capacity) {
-    // TODO(#6): Implement MSAN support.
-    // SanitizerUnpoisonMemoryRegion(old_slots,
-    //                               sizeof(slot_type) * old_capacity);
+    CWISS_UnpoisonMemory(old_slots, policy->slot->size * old_capacity);
     policy->alloc->free(
         old_ctrl,
         CWISS_AllocSize(old_capacity, policy->slot->size, policy->slot->align),
