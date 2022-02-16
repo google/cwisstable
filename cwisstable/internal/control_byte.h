@@ -306,7 +306,7 @@ static inline void CWISS_Group_ConvertSpecialToEmptyAndFullToDeleted(
   uint64_t lsbs = 0x0101010101010101ULL;
   uint64_t x = *self & msbs;
   uint64_t res = (~x + (x >> 7)) & ~lsbs;
-  memcpy(dst, &res, sizeof(*dst));
+  memcpy(dst, &res, sizeof(res));
 }
 #endif  // CWISS_HAVE_SSE2
 

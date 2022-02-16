@@ -113,6 +113,26 @@ cc_test(
     linkopts = CWISS_DEFAULT_LINKOPTS + CWISS_SAN_COPTS,
 )
 
+cc_test(
+    name = "cwisstable_test_nosimd",
+    srcs = ["cwisstable/cwisstable_test.cc"],
+    deps = [
+        ":cwisstable",
+        ":debug",
+        ":test_helpers",
+
+        "@com_google_absl//absl/cleanup",
+        "@com_google_googletest//:gtest_main",
+    ],
+    defines = [
+        "CWISS_HAVE_SSE2=0",
+        "CWISS_HAVE_SSSE3=0",
+    ],
+    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION + CWISS_SAN_COPTS,
+    linkopts = CWISS_DEFAULT_LINKOPTS + CWISS_SAN_COPTS,
+)
+
+
 cc_binary(
     name = "cwisstable_benchmark",
     srcs = ["cwisstable/cwisstable_benchmark.cc"],

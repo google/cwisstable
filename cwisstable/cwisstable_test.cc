@@ -90,18 +90,36 @@ TEST(Util, GrowthAndCapacity) {
 }
 
 TEST(Util, probe_seq) {
-  auto seq = CWISS_ProbeSeq_new(0, 127);
+  CWISS_ProbeSeq seq;
+  std::vector<size_t> offsets(8);
   auto gen = [&]() {
     size_t res = CWISS_ProbeSeq_offset(&seq, 0);
     CWISS_ProbeSeq_next(&seq);
     return res;
   };
-  std::vector<size_t> offsets(8);
+
+  CWISS_GCC_PUSH
+  CWISS_GCC_ALLOW("-Wunreachable-code")  // Clang seems to whine about this
+                                         // specific stanza...
+  std::vector<size_t> expected;
+  if (CWISS_Group_kWidth == 16) {
+    expected = {0, 16, 48, 96, 32, 112, 80, 64};
+  } else if (CWISS_Group_kWidth == 8) {
+    // Interestingly, OG SwissTable does _not_ test non-SIMD probe sequences.
+    expected = {0, 8, 24, 48, 80, 120, 40, 96};
+  } else {
+    FAIL() << "No test coverage for CWISS_Group_kWidth == "
+           << CWISS_Group_kWidth;
+  }
+  CWISS_GCC_POP
+
+  seq = CWISS_ProbeSeq_new(0, 127);
   std::generate_n(offsets.begin(), 8, gen);
-  EXPECT_THAT(offsets, ElementsAre(0, 16, 48, 96, 32, 112, 80, 64));
+  EXPECT_EQ(offsets, expected);
+
   seq = CWISS_ProbeSeq_new(128, 127);
   std::generate_n(offsets.begin(), 8, gen);
-  EXPECT_THAT(offsets, ElementsAre(0, 16, 48, 96, 32, 112, 80, 64));
+  EXPECT_EQ(offsets, expected);
 }
 
 template <size_t Width, size_t Shift = 0>
@@ -288,8 +306,7 @@ TEST(Batch, DropDeletes) {
       expected = CWISS_kDeleted;
     }
 
-    EXPECT_EQ(ctrl[i], expected)
-        << i << " " << static_cast<int>(pattern[i % pattern.size()]);
+    EXPECT_EQ(ctrl[i], expected);
   }
 }
 
@@ -595,7 +612,7 @@ TEST(Table, RehashWithNoResize) {
   size_t last_key_num_probes = probes();
 
   // Make sure that we have to make a lot of probes for last key.
-  ASSERT_GT(last_key_num_probes, kMinFullGroups);
+  ASSERT_GE(last_key_num_probes, kMinFullGroups);
 
   int x = 1;
   // Insert and erase one element, before in-place rehash happens.
