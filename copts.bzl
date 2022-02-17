@@ -130,6 +130,8 @@ CWISS_LLVM_TEST_FLAGS = [
     "-Wno-used-but-marked-unused",
     "-Wno-zero-as-null-pointer-constant",
     "-Wno-gnu-zero-variadic-macro-arguments",
+    # Make sure we get all the SIMD features on tests with Clang.
+    "-march=native",
 ]
 
 CWISS_MSVC_FLAGS = [
