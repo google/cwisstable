@@ -215,7 +215,7 @@ static inline CWISS_BitMask CWISS_Group_Match(const CWISS_Group* self,
 static inline CWISS_BitMask CWISS_Group_MatchEmpty(const CWISS_Group* self) {
   #if CWISS_HAVE_SSSE3
   // This only works because ctrl_t::kEmpty is -128.
-  return CWISS_Group_BitMask(_mm_movemask_epi8(_mm_sign_epi8(*self, *self))
+  return CWISS_Group_BitMask(_mm_movemask_epi8(_mm_sign_epi8(*self, *self)));
   #else
   return CWISS_Group_Match(self, CWISS_kEmpty);
   #endif
