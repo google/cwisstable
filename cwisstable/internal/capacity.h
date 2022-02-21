@@ -83,7 +83,7 @@ static inline size_t RandomSeed(void) {
   static CWISS_THREAD_LOCAL size_t counter;
   size_t value = ++counter;
 #else
-  static volatile CWISS_ATOMIC_T(size_t) counter;
+  static CWISS_ATOMIC_T(size_t) counter;
   size_t value = CWISS_ATOMIC_INC(counter);
 #endif
   return value ^ ((size_t)&counter);

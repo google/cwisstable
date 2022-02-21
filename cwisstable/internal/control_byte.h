@@ -17,7 +17,6 @@
 
 #include <assert.h>
 #include <limits.h>
-#include <stdalign.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -81,7 +80,7 @@ static_assert(CWISS_kDeleted == -2,
 static inline CWISS_ControlByte* CWISS_EmptyGroup() {
   // A single block of empty control bytes for tables without any slots
   // allocated. This enables removing a branch in the hot path of find().
-  alignas(16) static const CWISS_ControlByte kEmptyGroup[16] = {
+  CWISS_alignas(16) static const CWISS_ControlByte kEmptyGroup[16] = {
       CWISS_kSentinel, CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
       CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,
       CWISS_kEmpty,    CWISS_kEmpty, CWISS_kEmpty, CWISS_kEmpty,

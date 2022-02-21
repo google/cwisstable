@@ -23,28 +23,12 @@
 
 /// C++11 compatibility macros.
 ///
-/// Atomic support, due to incompatibilities between C++ and C11 atomic syntax.
-/// - `CWISS_ATOMIC_T(Type)` names an atomic version of `Type`. We must use this
-///   instead of `_Atomic(Type)` to name an atomic type.
-/// - `CWISS_ATOMIC_INC(value)` will atomically increment `value` without
-///   performing synchronization. This is used as a weak entropy source
-///   elsewhere.
-///
 /// `extern "C"` support via `CWISS_END_EXTERN` and `CWISS_END_EXTERN`,
 /// which open and close an `extern "C"` block in C++ mode.
 #ifdef __cplusplus
-  #include <atomic>
-  #define CWISS_ATOMIC_T(Type_) std::atomic<Type_>
-  #define CWISS_ATOMIC_INC(val_) (val_).fetch_add(1, std::memory_order_relaxed)
-
   #define CWISS_BEGIN_EXTERN extern "C" {
   #define CWISS_END_EXTERN }
 #else
-  #include <stdatomic.h>
-  #define CWISS_ATOMIC_T(Type_) _Atomic(Type_)
-  #define CWISS_ATOMIC_INC(val_) \
-    atomic_fetch_add_explicit(&(val_), 1, memory_order_relaxed)
-
   #define CWISS_BEGIN_EXTERN
   #define CWISS_END_EXTERN
 #endif
@@ -85,6 +69,31 @@
   #define CWISS_GCC_PUSH
   #define CWISS_GCC_ALLOW(w_)
   #define CWISS_GCC_POP
+#endif
+
+/// Atomic support, due to incompatibilities between C++ and C11 atomic syntax.
+/// - `CWISS_ATOMIC_T(Type)` names an atomic version of `Type`. We must use this
+///   instead of `_Atomic(Type)` to name an atomic type.
+/// - `CWISS_ATOMIC_INC(value)` will atomically increment `value` without
+///   performing synchronization. This is used as a weak entropy source
+///   elsewhere.
+///
+/// MSVC, of course, being that it does not support _Atomic in C mode, forces us
+/// into `volatile`. This is *wrong*, but MSVC certainly won't miscompile it any
+/// worse than it would a relaxed atomic. It doesn't matter for our use of
+/// atomics.
+#ifdef __cplusplus
+  #include <atomic>
+  #define CWISS_ATOMIC_T(Type_) volatile std::atomic<Type_>
+  #define CWISS_ATOMIC_INC(val_) (val_).fetch_add(1, std::memory_order_relaxed)
+#elif CWISS_IS_MSVC
+  #define CWISS_ATOMIC_T(Type_) volatile Type_
+  #define CWISS_ATOMIC_INC(val_) (val_ += 1)
+#else
+  #include <stdatomic.h>
+  #define CWISS_ATOMIC_T(Type_) volatile _Atomic(Type_)
+  #define CWISS_ATOMIC_INC(val_) \
+    atomic_fetch_add_explicit(&(val_), 1, memory_order_relaxed)
 #endif
 
 /// Warning control around `CWISS` symbol definitions. These macros will
@@ -133,6 +142,29 @@
     #error "Bad configuration: SSSE3 implies SSE2!"
   #endif
   #include <tmmintrin.h>
+#endif
+
+/// `CWISS_HAVE_MUL128` is nonzero if there is compiler-specific
+/// intrinsics for 128-bit multiplication.
+///
+/// `-DCWISS_HAVE_MUL128=0` can be used to explicitly fall back onto the pure
+/// C implementation.
+#ifndef DCWISS_HAVE_MUL128
+  #if defined(__SIZEOF_INT128__) && \
+      ((CWISS_IS_CLANG && !CWISS_IS_MSVC) || CWISS_IS_GCC)
+    #define DCWISS_HAVE_MUL128 1
+  #else
+    #define DCWISS_HAVE_MUL128 0
+  #endif
+#endif
+
+/// `CWISS_ALIGN` is a cross-platform `alignas()`: specifically, MSVC doesn't
+/// quite believe in it.
+#if CWISS_IS_MSVC
+  #define CWISS_alignas(align_) __declspec(align(align_))
+#else
+  #include <stdalign.h>
+  #define CWISS_alignas(align_) alignas(align_)
 #endif
 
 /// `CWISS_HAVE_BUILTIN` will, in Clang, detect whether a Clang language

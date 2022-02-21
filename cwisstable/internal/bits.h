@@ -129,12 +129,37 @@ typedef struct {
   uint64_t lo, hi;
 } CWISS_U128;
 
+/// Computes a 64-bit add-with-carry.
+static inline bool CWISS_Adc64(uint64_t* a, uint64_t b) {
+  *a += b;
+  return *a < b;
+}
+
 /// Computes a double-width multiplication operation.
 static inline CWISS_U128 CWISS_Mul128(uint64_t a, uint64_t b) {
-  // TODO: de-intrinsics-ize this.
+#if DCWISS_HAVE_MUL128
+  #if CWISS_IS_MSVC && defined(_M_X64)
+  CWISS_U128 result;
+  result.lo = _umul128(a, b, &result.hi);
+  return result;
+  #else
   __uint128_t p = a;
   p *= b;
   return (CWISS_U128){(uint64_t)p, (uint64_t)(p >> 64)};
+  #endif
+#else
+  // Taken from Abseil.
+  uint64_t a32 = a >> 32;
+  uint64_t a00 = a & 0xffffffff;
+  uint64_t b32 = b >> 32;
+  uint64_t b00 = b & 0xffffffff;
+
+  CWISS_U128 result = {a00 * b00, a32 * b32};
+  result.hi += ((a32 * b00) >> 32) + CWISS_Adc64(&result.lo, (a32 * b00) << 32);
+  result.hi += ((a00 * b32) >> 32) + CWISS_Adc64(&result.lo, (a00 * b32) << 32);
+
+  return result;
+#endif
 }
 
 /// Loads an unaligned u32.

@@ -14,7 +14,7 @@
 
 # C/C++ compiler options selection. Taken from Abseil.
 
-CWISS_CLANG_CL_FLAGS = [
+CLANG_CL_FLAGS = [
     "/W3",
     "/DNOMINMAX",
     "/DWIN32_LEAN_AND_MEAN",
@@ -23,7 +23,7 @@ CWISS_CLANG_CL_FLAGS = [
     "/D_ENABLE_EXTENDED_ALIGNED_STORAGE",
 ]
 
-CWISS_CLANG_CL_TEST_FLAGS = [
+CLANG_CL_TEST_FLAGS = [
     "-Wno-c99-extensions",
     "-Wno-deprecated-declarations",
     "-Wno-missing-noreturn",
@@ -43,7 +43,7 @@ CWISS_CLANG_CL_TEST_FLAGS = [
     "-Wno-gnu-zero-variadic-macro-arguments",
 ]
 
-CWISS_GCC_FLAGS = [
+GCC_FLAGS = [
     "-Werror",
     "-Wall",
     "-Wextra",
@@ -63,7 +63,7 @@ CWISS_GCC_FLAGS = [
     "-DNOMINMAX",
 ]
 
-CWISS_GCC_TEST_FLAGS = [
+GCC_TEST_FLAGS = [
     "-Wno-conversion-null",
     "-Wno-deprecated-declarations",
     "-Wno-missing-declarations",
@@ -73,7 +73,7 @@ CWISS_GCC_TEST_FLAGS = [
     "-Wno-unused-private-field",
 ]
 
-CWISS_LLVM_FLAGS = [
+LLVM_FLAGS = [
     "-Werror",
     "-Wall",
     "-Wextra",
@@ -112,7 +112,7 @@ CWISS_LLVM_FLAGS = [
     "-DNOMINMAX",
 ]
 
-CWISS_LLVM_TEST_FLAGS = [
+LLVM_TEST_FLAGS = [
     "-Wno-c99-extensions",
     "-Wno-deprecated-declarations",
     "-Wno-missing-noreturn",
@@ -134,7 +134,7 @@ CWISS_LLVM_TEST_FLAGS = [
     "-march=native",
 ]
 
-CWISS_MSVC_FLAGS = [
+MSVC_FLAGS = [
     "/W3",
     "/DNOMINMAX",
     "/DWIN32_LEAN_AND_MEAN",
@@ -151,11 +151,11 @@ CWISS_MSVC_FLAGS = [
     "/wd4800",
 ]
 
-CWISS_MSVC_LINKOPTS = [
+MSVC_LINKOPTS = [
     "-ignore:4221",
 ]
 
-CWISS_MSVC_TEST_FLAGS = [
+MSVC_TEST_FLAGS = [
     "/wd4018",
     "/wd4101",
     "/wd4503",
@@ -163,42 +163,42 @@ CWISS_MSVC_TEST_FLAGS = [
     "/DNOMINMAX",
 ]
 
-CWISS_LLVM_SANTIZER_FLAGS = [
+LLVM_SANTIZER_FLAGS = [
     "-fsanitize=address",
 ]
 
-CWISS_DEFAULT_COPTS = select({
-    "//:msvc_compiler": CWISS_MSVC_FLAGS,
-    "//:clang-cl_compiler": CWISS_CLANG_CL_FLAGS,
-    "//:clang_compiler": CWISS_LLVM_FLAGS,
-    "//conditions:default": CWISS_GCC_FLAGS,
+DEFAULT_COPTS = select({
+    "//toolchain:is_msvc": MSVC_FLAGS,
+    "//toolchain:is_clang_cl": CLANG_CL_FLAGS,
+    "//toolchain:is_clang": LLVM_FLAGS,
+    "//conditions:default": GCC_FLAGS,
 })
 
-CWISS_TEST_COPTS = CWISS_DEFAULT_COPTS + select({
-    "//:msvc_compiler": CWISS_MSVC_TEST_FLAGS,
-    "//:clang-cl_compiler": CWISS_CLANG_CL_TEST_FLAGS,
-    "//:clang_compiler": CWISS_LLVM_TEST_FLAGS,
-    "//conditions:default": CWISS_GCC_TEST_FLAGS,
+TEST_COPTS = DEFAULT_COPTS + select({
+    "//toolchain:is_msvc": MSVC_TEST_FLAGS,
+    "//toolchain:is_clang_cl": CLANG_CL_TEST_FLAGS,
+    "//toolchain:is_clang": LLVM_TEST_FLAGS,
+    "//conditions:default": GCC_TEST_FLAGS,
 })
 
-CWISS_SAN_COPTS = select({
-    "//:clang_compiler": CWISS_LLVM_SANTIZER_FLAGS,
+SAN_COPTS = select({
+    "//toolchain:is_clang": LLVM_SANTIZER_FLAGS,
     "//conditions:default": [],
 })
 
-CWISS_DEFAULT_LINKOPTS = select({
-    "//:msvc_compiler": CWISS_MSVC_LINKOPTS,
+DEFAULT_LINKOPTS = select({
+    "//toolchain:is_msvc": MSVC_LINKOPTS,
     "//conditions:default": [],
 })
 
-CWISS_CXX_VERSION = select({
-    "//:msvc_compiler": ["/std:c++17"],
-    "//:clang-cl_compiler": ["/std:c++17"],
+CXX_VERSION = select({
+    "//toolchain:is_msvc": ["/std:c++17"],
+    "//toolchain:is_clang_cl": ["/std:c++17"],
     "//conditions:default": ["--std=c++17"],
 })
 
-CWISS_C_VERSION = select({
-    "//:msvc_compiler": ["/std:c11"],
-    "//:clang-cl_compiler": ["/std:c11"],
+C_VERSION = select({
+    "//toolchain:is_msvc": ["/std:c11"],
+    "//toolchain:is_clang_cl": ["/std:c11"],
     "//conditions:default": ["--std=c11"],
 })

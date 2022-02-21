@@ -13,13 +13,13 @@
 # limitations under the License.
 
 load(
-    "//:copts.bzl",
-    "CWISS_DEFAULT_COPTS",
-    "CWISS_DEFAULT_LINKOPTS",
-    "CWISS_SAN_COPTS",
-    "CWISS_TEST_COPTS",
-    "CWISS_C_VERSION",
-    "CWISS_CXX_VERSION",
+    "//toolchain:copts.bzl",
+    "DEFAULT_COPTS",
+    "DEFAULT_LINKOPTS",
+    "SAN_COPTS",
+    "TEST_COPTS",
+    "C_VERSION",
+    "CXX_VERSION",
 )
 
 filegroup(
@@ -49,8 +49,8 @@ cc_library(
     name = "cwisstable_split",
     hdrs = [":public_headers"],
     srcs = [":private_headers"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     visibility = ["//visibility:public"],
 )
 
@@ -74,8 +74,8 @@ genrule(
 cc_library(
     name = "cwisstable",
     hdrs = ["cwisstable.h"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     visibility = ["//visibility:public"],
 )
 
@@ -83,8 +83,8 @@ cc_library(
     name = "debug",
     hdrs = ["cwisstable/internal/debug.h"],
     srcs = ["cwisstable/internal/debug.cc"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_CXX_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + CXX_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     deps = [":cwisstable"],
     visibility = ["//:__subpackages__"],
 )
@@ -92,8 +92,8 @@ cc_library(
 cc_library(
     name = "test_helpers",
     hdrs = ["cwisstable/internal/test_helpers.h"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_CXX_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + CXX_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     deps = ["//:cwisstable"],
     visibility = ["//:__subpackages__"],
 )
@@ -109,8 +109,8 @@ cc_test(
         "@com_google_absl//absl/cleanup",
         "@com_google_googletest//:gtest_main",
     ],
-    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION + CWISS_SAN_COPTS,
-    linkopts = CWISS_DEFAULT_LINKOPTS + CWISS_SAN_COPTS,
+    copts = TEST_COPTS + CXX_VERSION + SAN_COPTS,
+    linkopts = DEFAULT_LINKOPTS + SAN_COPTS,
 )
 
 cc_test(
@@ -128,8 +128,8 @@ cc_test(
         "CWISS_HAVE_SSE2=0",
         "CWISS_HAVE_SSSE3=0",
     ],
-    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION + CWISS_SAN_COPTS,
-    linkopts = CWISS_DEFAULT_LINKOPTS + CWISS_SAN_COPTS,
+    copts = TEST_COPTS + CXX_VERSION + SAN_COPTS,
+    linkopts = DEFAULT_LINKOPTS + SAN_COPTS,
 )
 
 
@@ -146,25 +146,7 @@ cc_binary(
         "@com_google_absl//absl/strings:str_format",
         "@com_github_google_benchmark//:benchmark_main",
     ],
-    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = TEST_COPTS + CXX_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     testonly = 1,
-)
-
-config_setting(
-    name = "clang_compiler",
-    flag_values = {"@bazel_tools//tools/cpp:compiler": "clang"},
-    visibility = [":__subpackages__"],
-)
-
-config_setting(
-    name = "msvc_compiler",
-    flag_values = {"@bazel_tools//tools/cpp:compiler": "mscv-cl"},
-    visibility = [":__subpackages__"],
-)
-
-config_setting(
-    name = "clang-cl_compiler",
-    flag_values = {"@bazel_tools//tools/cpp:compiler": "clang-cl"},
-    visibility = [":__subpackages__"],
 )
