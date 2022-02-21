@@ -158,6 +158,15 @@
   #endif
 #endif
 
+/// `CWISS_ALIGN` is a cross-platform `alignas()`: specifically, MSVC doesn't
+/// quite believe in it.
+#if CWISS_IS_MSVC
+  #define CWISS_alignas(align_) __declspec(align(align_))
+#else
+  #include <stdalign.h>
+  #define CWISS_alignas(align_) alignas(align_)
+#endif
+
 /// `CWISS_HAVE_BUILTIN` will, in Clang, detect whether a Clang language
 /// extension is enabled.
 ///
