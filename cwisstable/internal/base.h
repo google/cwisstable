@@ -144,6 +144,20 @@
   #include <tmmintrin.h>
 #endif
 
+/// `CWISS_HAVE_MUL128` is nonzero if there is compiler-specific
+/// intrinsics for 128-bit multiplication.
+///
+/// `-DCWISS_HAVE_MUL128=0` can be used to explicitly fall back onto the pure
+/// C implementation.
+#ifndef DCWISS_HAVE_MUL128
+  #if defined(__SIZEOF_INT128__) && \
+      ((CWISS_IS_CLANG && !CWISS_IS_MSVC) || CWISS_IS_GCC)
+    #define DCWISS_HAVE_MUL128 1
+  #else
+    #define DCWISS_HAVE_MUL128 0
+  #endif
+#endif
+
 /// `CWISS_HAVE_BUILTIN` will, in Clang, detect whether a Clang language
 /// extension is enabled.
 ///
