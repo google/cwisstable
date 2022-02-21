@@ -23,28 +23,12 @@
 
 /// C++11 compatibility macros.
 ///
-/// Atomic support, due to incompatibilities between C++ and C11 atomic syntax.
-/// - `CWISS_ATOMIC_T(Type)` names an atomic version of `Type`. We must use this
-///   instead of `_Atomic(Type)` to name an atomic type.
-/// - `CWISS_ATOMIC_INC(value)` will atomically increment `value` without
-///   performing synchronization. This is used as a weak entropy source
-///   elsewhere.
-///
 /// `extern "C"` support via `CWISS_END_EXTERN` and `CWISS_END_EXTERN`,
 /// which open and close an `extern "C"` block in C++ mode.
 #ifdef __cplusplus
-  #include <atomic>
-  #define CWISS_ATOMIC_T(Type_) std::atomic<Type_>
-  #define CWISS_ATOMIC_INC(val_) (val_).fetch_add(1, std::memory_order_relaxed)
-
   #define CWISS_BEGIN_EXTERN extern "C" {
   #define CWISS_END_EXTERN }
 #else
-  #include <stdatomic.h>
-  #define CWISS_ATOMIC_T(Type_) _Atomic(Type_)
-  #define CWISS_ATOMIC_INC(val_) \
-    atomic_fetch_add_explicit(&(val_), 1, memory_order_relaxed)
-
   #define CWISS_BEGIN_EXTERN
   #define CWISS_END_EXTERN
 #endif
@@ -85,6 +69,31 @@
   #define CWISS_GCC_PUSH
   #define CWISS_GCC_ALLOW(w_)
   #define CWISS_GCC_POP
+#endif
+
+/// Atomic support, due to incompatibilities between C++ and C11 atomic syntax.
+/// - `CWISS_ATOMIC_T(Type)` names an atomic version of `Type`. We must use this
+///   instead of `_Atomic(Type)` to name an atomic type.
+/// - `CWISS_ATOMIC_INC(value)` will atomically increment `value` without
+///   performing synchronization. This is used as a weak entropy source
+///   elsewhere.
+///
+/// MSVC, of course, being that it does not support _Atomic in C mode, forces us
+/// into `volatile`. This is *wrong*, but MSVC certainly won't miscompile it any
+/// worse than it would a relaxed atomic. It doesn't matter for our use of
+/// atomics.
+#ifdef __cplusplus
+  #include <atomic>
+  #define CWISS_ATOMIC_T(Type_) volatile std::atomic<Type_>
+  #define CWISS_ATOMIC_INC(val_) (val_).fetch_add(1, std::memory_order_relaxed)
+#elif CWISS_IS_MSVC
+  #define CWISS_ATOMIC_T(Type_) volatile Type_
+  #define CWISS_ATOMIC_INC(val_) (val_ += 1)
+#else
+  #include <stdatomic.h>
+  #define CWISS_ATOMIC_T(Type_) volatile _Atomic(Type_)
+  #define CWISS_ATOMIC_INC(val_) \
+    atomic_fetch_add_explicit(&(val_), 1, memory_order_relaxed)
 #endif
 
 /// Warning control around `CWISS` symbol definitions. These macros will
