@@ -13,18 +13,18 @@
 # limitations under the License.
 
 load(
-    "//:copts.bzl",
-    "CWISS_DEFAULT_COPTS",
-    "CWISS_DEFAULT_LINKOPTS",
-    "CWISS_C_VERSION",
+    "//toolchain:copts.bzl",
+    "DEFAULT_COPTS",
+    "DEFAULT_LINKOPTS",
+    "C_VERSION",
 )
 
 cc_binary(
     name = "arraymap",
     srcs = ["arraymap.c"],
     deps = ["//:cwisstable"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
 )
 
@@ -32,8 +32,8 @@ cc_binary(
     name = "arraymap_split",
     srcs = ["arraymap.c"],
     deps = ["//:cwisstable_split"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )
 
@@ -41,8 +41,8 @@ cc_binary(
     name = "hashset",
     srcs = ["hashset.c"],
     deps = ["//:cwisstable"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
 )
 
@@ -50,8 +50,8 @@ cc_binary(
     name = "hashset_split",
     srcs = ["hashset.c"],
     deps = ["//:cwisstable_split"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )
 
@@ -59,8 +59,8 @@ cc_binary(
     name = "hashmap",
     srcs = ["hashmap.c"],
     deps = ["//:cwisstable"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
 )
 
@@ -68,8 +68,8 @@ cc_binary(
     name = "hashmap_split",
     srcs = ["hashmap.c"],
     deps = ["//:cwisstable_split"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )
 
@@ -77,8 +77,8 @@ cc_binary(
     name = "stringmap",
     srcs = ["stringmap.c"],
     deps = ["//:cwisstable"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_UNIFIED"],
 )
 
@@ -86,7 +86,7 @@ cc_binary(
     name = "stringmap_split",
     srcs = ["stringmap.c"],
     deps = ["//:cwisstable_split"],
-    copts = CWISS_DEFAULT_COPTS + CWISS_C_VERSION,
-    linkopts = CWISS_DEFAULT_LINKOPTS,
+    copts = DEFAULT_COPTS + C_VERSION,
+    linkopts = DEFAULT_LINKOPTS,
     defines = ["CWISS_EXAMPLE_SPLIT"],
 )
