@@ -137,6 +137,13 @@ static inline CWISS_U128 CWISS_Mul128(uint64_t a, uint64_t b) {
   return (CWISS_U128){(uint64_t)p, (uint64_t)(p >> 64)};
 }
 
+/// Loads an unaligned u16.
+static inline uint16_t CWISS_Load16(const void* p) {
+  uint16_t v;
+  memcpy(&v, p, sizeof(v));
+  return v;
+}
+
 /// Loads an unaligned u32.
 static inline uint32_t CWISS_Load32(const void* p) {
   uint32_t v;
@@ -174,6 +181,28 @@ static inline uint32_t CWISS_Load1To3(const void* p, size_t len) {
   uint32_t mem1 = p8[len / 2];
   uint32_t mem2 = p8[len - 1];
   return (mem0 | (mem1 << (len / 2 * 8)) | (mem2 << ((len - 1) * 8)));
+}
+
+/// Reads 0 to 8 bytes from p, twice.
+CWISS_INLINE_ALWAYS
+static inline CWISS_U128 CWISS_Load0to8Twice(const void* p, size_t len) {
+  const unsigned char* p8 = (const unsigned char*)p;
+  if (len >= 2) {
+    if (len >= 4) {
+      // Len 4..=8.
+      return (CWISS_U128){CWISS_Load32(p), CWISS_Load32(p8 + len - 4)};
+    } else {
+      // Len 2..=3.
+      return (CWISS_U128){CWISS_Load16(p), p8[len - 1]};
+    }
+  } else {
+    // Len 1.
+    if (len > 0) {
+      return (CWISS_U128){p8[0], p8[0]};
+    } else {
+      return (CWISS_U128){0};
+    }
+  }
 }
 
 /// A abstract bitmask, such as that emitted by a SIMD instruction.
@@ -232,6 +261,38 @@ static inline bool CWISS_BitMask_next(CWISS_BitMask* self, uint32_t* bit) {
   self->mask &= (self->mask - 1);
   return true;
 }
+
+#if CWISS_HAVE_AES
+// TODO: ARM support.
+
+/// Performs a single, hardware-accelerated AES encryption round.
+CWISS_INLINE_ALWAYS
+static inline CWISS_U128 CWISS_AesEnc(CWISS_U128 state, CWISS_U128 key) {
+  __m128i state_, key_;
+  memcpy(&state_, &state, sizeof(state));
+  memcpy(&key_, &key, sizeof(key));
+
+  __m128i out_ = _mm_aesenc_si128(state_, key_);
+
+  CWISS_U128 out;
+  memcpy(&out, &out_, sizeof(out));
+  return out;
+}
+
+/// Performs a single, hardware-accelerated AES decryption round.
+CWISS_INLINE_ALWAYS
+static inline CWISS_U128 CWISS_AesDec(CWISS_U128 state, CWISS_U128 key) {
+  __m128i state_, key_;
+  memcpy(&state_, &state, sizeof(state));
+  memcpy(&key_, &key, sizeof(key));
+
+  __m128i out_ = _mm_aesdec_si128(state_, key_);
+
+  CWISS_U128 out;
+  memcpy(&out, &out_, sizeof(out));
+  return out;
+}
+#endif
 
 CWISS_END_EXTERN
 CWISS_END

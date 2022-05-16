@@ -251,9 +251,9 @@ typedef struct {
   }                                                                      \
   CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
   inline size_t kPolicy_##_DefaultHash(const void* val) {                \
-    CWISS_AbslHash_State state = CWISS_AbslHash_kInit;                   \
-    CWISS_AbslHash_Write(&state, val, sizeof(Key_));                     \
-    return CWISS_AbslHash_Finish(state);                                 \
+    CWISS_Hash_State state = CWISS_Hash_kInit;                           \
+    CWISS_Hash_Write(&state, val, sizeof(Key_));                         \
+    return CWISS_Hash_Finish(state);                                     \
   }                                                                      \
   CWISS_EXTRACT_RAW(modifiers, static, __VA_ARGS__)                      \
   inline bool kPolicy_##_DefaultEq(const void* a, const void* b) {       \

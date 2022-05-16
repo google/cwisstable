@@ -25,20 +25,20 @@ namespace cwisstable {
 template <typename T>
 struct DefaultHash {
   size_t operator()(const T& val) {
-    CWISS_AbslHash_State state = CWISS_AbslHash_kInit;
-    CWISS_AbslHash_Write(&state, &val, sizeof(T));
-    return CWISS_AbslHash_Finish(state);
+    CWISS_Hash_State state = CWISS_Hash_kInit;
+    CWISS_Hash_Write(&state, &val, sizeof(T));
+    return CWISS_Hash_Finish(state);
   }
 };
 
 struct HashStdString {
   template <typename S>
   size_t operator()(const S& s) {
-    CWISS_AbslHash_State state = CWISS_AbslHash_kInit;
+    CWISS_Hash_State state = CWISS_Hash_kInit;
     size_t size = s.size();
-    CWISS_AbslHash_Write(&state, &size, sizeof(size_t));
-    CWISS_AbslHash_Write(&state, s.data(), s.size());
-    return CWISS_AbslHash_Finish(state);
+    CWISS_Hash_Write(&state, &size, sizeof(size_t));
+    CWISS_Hash_Write(&state, s.data(), s.size());
+    return CWISS_Hash_Finish(state);
   }
 };
 
