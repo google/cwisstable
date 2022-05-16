@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "cwisstable/internal/absl_hash.h"
+#include "cwisstable/internal/ahash.h"
 #include "cwisstable/internal/base.h"
 #include "cwisstable/internal/bits.h"
 
@@ -37,10 +38,12 @@
 ///   - `size_t CWISS_<Hash>_Finish(State)`, digest the state into a final hash
 ///     value.
 ///
-/// Currently available are two hashes: `FxHash`, which is small and fast, and
-/// `AbslHash`, the hash function used by Abseil.
+/// Currently available are three hashes: `FxHash`, which is small and fast,
+/// `AbslHash`, the hash function used by Abseil, and `AHash`, a hardware
+/// AES-based hash function.
 ///
-/// `AbslHash` is the default hash function.
+/// The default hash is named `Hash`, which is chosen automatically depending
+/// on detected hardware.
 
 CWISS_BEGIN
 CWISS_BEGIN_EXTERN
@@ -110,6 +113,32 @@ CWISS_AbslHash_Write_small:;
 static inline size_t CWISS_AbslHash_Finish(CWISS_AbslHash_State state) {
   return state;
 }
+
+#if CWISS_HAVE_AES
+typedef CWISS_AHash_State_ CWISS_AHash_State;
+  #define CWISS_AHash_kInit CWISS_AHash_kInit_
+
+CWISS_INLINE_ALWAYS
+static inline void CWISS_AHash_Write(CWISS_AHash_State* state, const void* val,
+                                     size_t len) {
+  CWISS_AHash_Write_(state, val, len);
+}
+
+CWISS_INLINE_ALWAYS
+static inline size_t CWISS_AHash_Finish(CWISS_AHash_State state) {
+  return CWISS_AHash_Finish_(state);
+}
+
+  #define CWISS_Hash_State CWISS_AHash_State
+  #define CWISS_Hash_kInit CWISS_AHash_kInit
+  #define CWISS_Hash_Write CWISS_AHash_Write
+  #define CWISS_Hash_Finish CWISS_AHash_Finish
+#else
+  #define CWISS_Hash_State CWISS_AbslHash_State
+  #define CWISS_Hash_kInit CWISS_AbslHash_kInit
+  #define CWISS_Hash_Write CWISS_AbslHash_Write
+  #define CWISS_Hash_Finish CWISS_AbslHash_Finish
+#endif
 
 CWISS_END_EXTERN
 CWISS_END

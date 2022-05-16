@@ -41,7 +41,7 @@ struct StringGen {
   template <class Gen>
   std::string operator()(Gen& rng) const {
     std::string res;
-    res.resize(12);
+    res.resize(size);
     std::uniform_int_distribution<uint32_t> printable_ascii(0x20, 0x7E);
     std::generate(res.begin(), res.end(), [&] { return printable_ascii(rng); });
     return res;
@@ -56,7 +56,7 @@ struct StringGen {
 void BM_CacheInSteadyState(benchmark::State& state) {
   std::random_device rd;
   std::mt19937 rng(rd());
-  StringGen gen{12};
+  StringGen gen{64};
   auto t = StringTable_new(0);
   absl::Cleanup c_ = [&] { StringTable_destroy(&t); };
 

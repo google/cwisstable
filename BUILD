@@ -35,6 +35,7 @@ filegroup(
     name = "private_headers",
     srcs = [
         "cwisstable/internal/absl_hash.h",
+        "cwisstable/internal/ahash.h",
         "cwisstable/internal/base.h",
         "cwisstable/internal/bits.h",
         "cwisstable/internal/capacity.h",
@@ -145,6 +146,27 @@ cc_binary(
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/strings:str_format",
         "@com_github_google_benchmark//:benchmark_main",
+    ],
+    copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
+    linkopts = CWISS_DEFAULT_LINKOPTS,
+    testonly = 1,
+)
+
+cc_binary(
+    name = "cwisstable_benchmark_no_aes",
+    srcs = ["cwisstable/cwisstable_benchmark.cc"],
+    tags = ["benchmark"],
+    deps = [
+        ":cwisstable",
+        ":debug",
+        ":test_helpers",
+        
+        "@com_google_absl//absl/cleanup",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+    defines = [
+        "CWISS_HAVE_AES=0",
     ],
     copts = CWISS_TEST_COPTS + CWISS_CXX_VERSION,
     linkopts = CWISS_DEFAULT_LINKOPTS,
